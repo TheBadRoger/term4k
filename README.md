@@ -38,13 +38,13 @@ term4k
 If you only download script files via `curl` or `wget`, install with:
 
 ```bash
-curl -fsSL "<raw-install-script-url>" -o install.sh
-sh install.sh --source-url "<term4k-source-archive-tar-gz-url>"
+curl -fsSL "https://raw.githubusercontent.com/TheBadRoger/term4k/main/install.sh" -o install.sh
+sh install.sh --source-url "https://github.com/TheBadRoger/term4k/archive/refs/heads/main.tar.gz"
 ```
 
 ```bash
-wget -qO install.sh "<raw-install-script-url>"
-sh install.sh --source-url "<term4k-source-archive-tar-gz-url>"
+wget -qO install.sh "https://raw.githubusercontent.com/TheBadRoger/term4k/main/install.sh"
+sh install.sh --source-url "https://github.com/TheBadRoger/term4k/archive/refs/heads/main.tar.gz"
 ```
 
 ## Uninstall
@@ -70,12 +70,12 @@ Safe mode (remove program only, keep user data):
 Remote uninstall (no clone):
 
 ```bash
-curl -fsSL "<raw-uninstall-script-url>" -o uninstall.sh
+curl -fsSL "https://raw.githubusercontent.com/TheBadRoger/term4k/main/uninstall.sh" -o uninstall.sh
 sh uninstall.sh --yes --keep-user-data
 ```
 
 ```bash
-wget -qO uninstall.sh "<raw-uninstall-script-url>"
+wget -qO uninstall.sh "https://raw.githubusercontent.com/TheBadRoger/term4k/main/uninstall.sh"
 sh uninstall.sh --yes --keep-user-data
 ```
 
@@ -90,13 +90,13 @@ Local update:
 Remote update (no clone):
 
 ```bash
-curl -fsSL "<raw-update-script-url>" -o update.sh
-sh update.sh --install-script-url "<raw-install-script-url>" --source-url "<term4k-source-archive-tar-gz-url>"
+curl -fsSL "https://raw.githubusercontent.com/TheBadRoger/term4k/main/update.sh" -o update.sh
+sh update.sh --install-script-url "https://raw.githubusercontent.com/TheBadRoger/term4k/main/install.sh" --source-url "https://github.com/TheBadRoger/term4k/archive/refs/heads/main.tar.gz"
 ```
 
 ```bash
-wget -qO update.sh "<raw-update-script-url>"
-sh update.sh --install-script-url "<raw-install-script-url>" --source-url "<term4k-source-archive-tar-gz-url>"
+wget -qO update.sh "https://raw.githubusercontent.com/TheBadRoger/term4k/main/update.sh"
+sh update.sh --install-script-url "https://raw.githubusercontent.com/TheBadRoger/term4k/main/install.sh" --source-url "https://github.com/TheBadRoger/term4k/archive/refs/heads/main.tar.gz"
 ```
 
 ## Manual Build (Optional)
