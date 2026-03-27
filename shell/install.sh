@@ -196,8 +196,8 @@ else
     run_as_root cmake --install "$BUILD_DIR"
 fi
 
-# Ensure locale assets from repository i18n/ are present in system path.
-install_i18n_assets "$ROOT_DIR/i18n"
+# Ensure locale assets from repository are present in system path.
+install_i18n_assets "$ROOT_DIR/src/resources/i18n"
 
 echo "[term4k installer] done. Run: term4k"
 

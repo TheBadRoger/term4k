@@ -9,34 +9,34 @@ include(GNUInstallDirs)
 
 option(TERM4K_BUILD_TESTS "Build term4k unit tests" ON)
 
-add_executable(term4k main.cpp
-        src/services/AudioService.cpp
+add_executable(term4k src/main/main.cpp
+        src/main/services/AudioService.cpp
         includes/miniaudio_impl.cpp
-        src/services/ChartIOService.cpp
-        src/services/ChartCatalogService.cpp
-        src/entities/Chart.cpp
-        src/utils/JsonUtils.cpp
-        src/entities/Rating.cpp
-        src/entities/User.cpp
-        src/dao/ProofedRecordsDAO.cpp
-        src/dao/UserAccountsDAO.cpp
-        src/utils/LiteDBUtils.cpp
-        src/utils/PrefixTrie.cpp
-        src/services/I18nService.cpp
-        src/services/AuthenticatedUserService.cpp
-        src/services/UserLoginService.cpp
-        src/instances/ChartListInstance.cpp
-        src/instances/UserLoginInstance.cpp
-        src/instances/UserStatInstance.cpp
-        src/instances/AdminStatInstance.cpp
-        src/utils/ErrorNotifier.cpp
-        src/config/AppDirs.cpp
-        src/config/RuntimeConfigs.cpp
-        src/config/RuntimeConfigs.h
+        src/main/services/ChartIOService.cpp
+        src/main/services/ChartCatalogService.cpp
+        src/main/entities/Chart.cpp
+        src/main/utils/JsonUtils.cpp
+        src/main/entities/Rating.cpp
+        src/main/entities/User.cpp
+        src/main/dao/ProofedRecordsDAO.cpp
+        src/main/dao/UserAccountsDAO.cpp
+        src/main/utils/LiteDBUtils.cpp
+        src/main/utils/PrefixTrie.cpp
+        src/main/services/I18nService.cpp
+        src/main/services/AuthenticatedUserService.cpp
+        src/main/services/UserLoginService.cpp
+        src/main/instances/ChartListInstance.cpp
+        src/main/instances/UserLoginInstance.cpp
+        src/main/instances/UserStatInstance.cpp
+        src/main/instances/AdminStatInstance.cpp
+        src/main/utils/ErrorNotifier.cpp
+        src/main/config/AppDirs.cpp
+        src/main/config/RuntimeConfigs.cpp
+        src/main/config/RuntimeConfigs.h
 )
 
 target_link_libraries(term4k OpenSSL::Crypto)
-target_include_directories(term4k PRIVATE includes src)
+target_include_directories(term4k PRIVATE includes src/main)
 
 if (TERM4K_BUILD_TESTS)
     enable_testing()
@@ -59,30 +59,30 @@ if (TERM4K_BUILD_TESTS)
             test/unit/instances/UserLoginInstanceTests.cpp
             test/unit/instances/UserStatInstanceTests.cpp
             test/unit/instances/AdminStatInstanceTests.cpp
-            src/utils/PrefixTrie.cpp
-            src/utils/ErrorNotifier.cpp
-            src/utils/LiteDBUtils.cpp
-            src/config/AppDirs.cpp
-            src/config/RuntimeConfigs.cpp
-            src/services/I18nService.cpp
-            src/services/ChartIOService.cpp
-            src/services/ChartCatalogService.cpp
-            src/services/AuthenticatedUserService.cpp
-            src/services/AudioService.cpp
-            src/services/UserLoginService.cpp
-            src/instances/ChartListInstance.cpp
-            src/instances/UserLoginInstance.cpp
-            src/instances/UserStatInstance.cpp
-            src/instances/AdminStatInstance.cpp
-            src/dao/ProofedRecordsDAO.cpp
-            src/dao/UserAccountsDAO.cpp
-            src/entities/Chart.cpp
-            src/utils/JsonUtils.cpp
-            src/entities/User.cpp
+            src/main/utils/PrefixTrie.cpp
+            src/main/utils/ErrorNotifier.cpp
+            src/main/utils/LiteDBUtils.cpp
+            src/main/config/AppDirs.cpp
+            src/main/config/RuntimeConfigs.cpp
+            src/main/services/I18nService.cpp
+            src/main/services/ChartIOService.cpp
+            src/main/services/ChartCatalogService.cpp
+            src/main/services/AuthenticatedUserService.cpp
+            src/main/services/AudioService.cpp
+            src/main/services/UserLoginService.cpp
+            src/main/instances/ChartListInstance.cpp
+            src/main/instances/UserLoginInstance.cpp
+            src/main/instances/UserStatInstance.cpp
+            src/main/instances/AdminStatInstance.cpp
+            src/main/dao/ProofedRecordsDAO.cpp
+            src/main/dao/UserAccountsDAO.cpp
+            src/main/entities/Chart.cpp
+            src/main/utils/JsonUtils.cpp
+            src/main/entities/User.cpp
             includes/miniaudio_impl.cpp
     )
 
-    target_include_directories(term4k_tests PRIVATE includes src test)
+    target_include_directories(term4k_tests PRIVATE includes src/main test)
     target_link_libraries(term4k_tests PRIVATE OpenSSL::Crypto)
 
     add_test(NAME term4k_tests COMMAND term4k_tests)
@@ -98,7 +98,7 @@ install(TARGETS term4k
         COMPONENT Runtime)
 
 # Runtime: locale files -> /usr/share/term4k/i18n/
-install(DIRECTORY i18n/
+install(DIRECTORY src/resources/i18n/
         DESTINATION ${CMAKE_INSTALL_DATADIR}/term4k/i18n
         COMPONENT Runtime)
 
@@ -110,26 +110,26 @@ install(CODE
 
 # Development package: public headers -> /usr/include/term4k/
 set(TERM4K_PUBLIC_HEADERS
-        src/config/AppDirs.h
-        src/config/RuntimeConfigs.h
-        src/services/ChartIOService.h
-        src/services/ChartCatalogService.h
-        src/services/I18nService.h
-        src/services/AuthenticatedUserService.h
-        src/services/UserLoginService.h
-        src/services/AudioService.h
-        src/instances/ChartListInstance.h
-        src/instances/UserLoginInstance.h
-        src/instances/UserStatInstance.h
-        src/instances/AdminStatInstance.h
-        src/dao/ProofedRecordsDAO.h
-        src/dao/UserAccountsDAO.h
-        src/utils/LiteDBUtils.h
-        src/entities/Chart.h
-        src/utils/JsonUtils.h
-        src/entities/Rating.h
-        src/entities/User.h
-        src/utils/ErrorNotifier.h)
+        src/main/config/AppDirs.h
+        src/main/config/RuntimeConfigs.h
+        src/main/services/ChartIOService.h
+        src/main/services/ChartCatalogService.h
+        src/main/services/I18nService.h
+        src/main/services/AuthenticatedUserService.h
+        src/main/services/UserLoginService.h
+        src/main/services/AudioService.h
+        src/main/instances/ChartListInstance.h
+        src/main/instances/UserLoginInstance.h
+        src/main/instances/UserStatInstance.h
+        src/main/instances/AdminStatInstance.h
+        src/main/dao/ProofedRecordsDAO.h
+        src/main/dao/UserAccountsDAO.h
+        src/main/utils/LiteDBUtils.h
+        src/main/entities/Chart.h
+        src/main/utils/JsonUtils.h
+        src/main/entities/Rating.h
+        src/main/entities/User.h
+        src/main/utils/ErrorNotifier.h)
 
 install(FILES ${TERM4K_PUBLIC_HEADERS}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/term4k

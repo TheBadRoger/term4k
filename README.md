@@ -43,7 +43,7 @@ sh install.sh --source-url "https://github.com/TheBadRoger/term4k/archive/refs/h
 ```
 
 ```bash
-wget -qO install.sh "https://raw.githubusercontent.com/TheBadRoger/term4k/main/install.sh"
+wget -qO install.sh "https://raw.githubusercontent.com/TheBadRoger/term4k/main/shell/install.sh"
 sh install.sh --source-url "https://github.com/TheBadRoger/term4k/archive/refs/heads/main.tar.gz"
 ```
 
@@ -70,12 +70,12 @@ Safe mode (remove program only, keep user data):
 Remote uninstall (no clone):
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/TheBadRoger/term4k/main/uninstall.sh" -o uninstall.sh
+curl -fsSL "https://raw.githubusercontent.com/TheBadRoger/term4k/main/shell/uninstall.sh" -o uninstall.sh
 sh uninstall.sh --yes --keep-user-data
 ```
 
 ```bash
-wget -qO uninstall.sh "https://raw.githubusercontent.com/TheBadRoger/term4k/main/uninstall.sh"
+wget -qO uninstall.sh "https://raw.githubusercontent.com/TheBadRoger/term4k/main/shell/uninstall.sh"
 sh uninstall.sh --yes --keep-user-data
 ```
 
@@ -90,13 +90,13 @@ Local update:
 Remote update (no clone):
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/TheBadRoger/term4k/main/update.sh" -o update.sh
-sh update.sh --install-script-url "https://raw.githubusercontent.com/TheBadRoger/term4k/main/install.sh" --source-url "https://github.com/TheBadRoger/term4k/archive/refs/heads/main.tar.gz"
+curl -fsSL "https://raw.githubusercontent.com/TheBadRoger/term4k/main/shell/update.sh" -o update.sh
+sh update.sh --install-script-url "https://raw.githubusercontent.com/TheBadRoger/term4k/main/shell/install.sh" --source-url "https://github.com/TheBadRoger/term4k/archive/refs/heads/main.tar.gz"
 ```
 
 ```bash
-wget -qO update.sh "https://raw.githubusercontent.com/TheBadRoger/term4k/main/update.sh"
-sh update.sh --install-script-url "https://raw.githubusercontent.com/TheBadRoger/term4k/main/install.sh" --source-url "https://github.com/TheBadRoger/term4k/archive/refs/heads/main.tar.gz"
+wget -qO update.sh "https://raw.githubusercontent.com/TheBadRoger/term4k/main/shell/update.sh"
+sh update.sh --install-script-url "https://raw.githubusercontent.com/TheBadRoger/term4k/main/shell/install.sh" --source-url "https://github.com/TheBadRoger/term4k/archive/refs/heads/main.tar.gz"
 ```
 
 ## Manual Build (Optional)
