@@ -34,7 +34,7 @@ term4k 是一个基于 C++20 的终端节奏游戏项目。
 
 > 由 `.github/workflows/readme-stats.yml` 自动更新。
 
-**代码总行数：** `10,862`  
+**代码总行数：** `10,844`  
 **类/结构体定义数量（C++）：** `86`  
 **栈对象声明数量（C++，启发式）：** `392`  
 **`new` 堆分配次数（C++，启发式）：** `0`  
@@ -43,10 +43,11 @@ term4k 是一个基于 C++20 的终端节奏游戏项目。
 ### 分布图
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'fontFamily': 'Inter, Segoe UI, Helvetica, Arial, sans-serif', 'pieTitleTextColor': '#111827', 'pieSectionTextColor': '#111827', 'pieOuterStrokeColor': '#ffffff', 'pieOuterStrokeWidth': '2px', 'pie1': '#4f46e5', 'pie2': '#06b6d4', 'pie3': '#10b981', 'pie4': '#f59e0b', 'pie5': '#ef4444', 'pie6': '#8b5cf6'}}}%%
 pie showData
     title Code Distribution by Language (LOC)
-    "C++ (86.8%)" : 9432
-    "Markdown (6.3%)" : 680
+    "C++ (87.0%)" : 9432
+    "Markdown (6.1%)" : 662
     "Shell (3.9%)" : 422
     "CMake (2.3%)" : 252
     "JSON (0.7%)" : 76

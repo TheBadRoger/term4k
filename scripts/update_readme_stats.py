@@ -15,6 +15,14 @@ BADGES_DIR = REPO_ROOT / ".github" / "badges"
 STATS_START = "<!-- README_STATS:START -->"
 STATS_END = "<!-- README_STATS:END -->"
 MAX_CHART_ITEMS = 6
+MERMAID_PIE_INIT = (
+    "%%{init: {'theme': 'base', 'themeVariables': "
+    "{'fontFamily': 'Inter, Segoe UI, Helvetica, Arial, sans-serif', "
+    "'pieTitleTextColor': '#111827', 'pieSectionTextColor': '#111827', "
+    "'pieOuterStrokeColor': '#ffffff', 'pieOuterStrokeWidth': '2px', "
+    "'pie1': '#4f46e5', 'pie2': '#06b6d4', 'pie3': '#10b981', "
+    "'pie4': '#f59e0b', 'pie5': '#ef4444', 'pie6': '#8b5cf6'}}}%%"
+)
 
 EXCLUDED_DIRS = {
     ".git",
@@ -156,7 +164,7 @@ def compress_for_chart(language_lines: dict[str, int], max_items: int = MAX_CHAR
 
 def build_mermaid_pie(language_lines: dict[str, int], total_lines: int) -> str:
     chart_items = compress_for_chart(language_lines)
-    lines = ["```mermaid", "pie showData", '    title Code Distribution by Language (LOC)']
+    lines = ["```mermaid", MERMAID_PIE_INIT, "pie showData", '    title Code Distribution by Language (LOC)']
     for language, count in chart_items:
         label = f"{language} ({0.0 if total_lines == 0 else (count / total_lines * 100):.1f}%)"
         lines.append(f'    "{label}" : {count}')
