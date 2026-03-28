@@ -34,7 +34,7 @@ It includes:
 
 > Auto-updated by `.github/workflows/readme-stats.yml`.
 
-**Total code lines:** `10,862`  
+**Total code lines:** `10,844`  
 **Class/Struct definitions (C++):** `86`  
 **Stack object declarations (C++, heuristic):** `392`  
 **Heap allocations via `new` (C++, heuristic):** `0`  
@@ -45,8 +45,8 @@ It includes:
 ```mermaid
 pie showData
     title Code Distribution by Language (LOC)
-    "C++ (86.8%)" : 9432
-    "Markdown (6.3%)" : 680
+    "C++ (87.0%)" : 9432
+    "Markdown (6.1%)" : 662
     "Shell (3.9%)" : 422
     "CMake (2.3%)" : 252
     "JSON (0.7%)" : 76
