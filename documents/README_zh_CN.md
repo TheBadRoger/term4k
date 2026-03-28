@@ -2,6 +2,11 @@
 
 [English documentation / 英文文档](../README.md)
 
+## 文档导航
+
+- [架构与模块分工（中文）](./ARCHITECTURE_zh_CN.md)
+- [Architecture Overview (English)](./ARCHITECTURE.md)
+
 term4k 是一个基于 C++20 的终端节奏游戏项目。
 
 主要能力包括：

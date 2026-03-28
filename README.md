@@ -2,6 +2,11 @@
 
 [Chinese documentation / 中文文档](documents/README_zh_CN.md)
 
+## Documentation
+
+- [Architecture Overview (English)](documents/ARCHITECTURE.md)
+- [架构与模块分工（中文）](documents/ARCHITECTURE_zh_CN.md)
+
 term4k is a terminal-based rhythm game project written in C++20.
 
 It includes:
@@ -105,5 +110,27 @@ sh update.sh --install-script-url "https://raw.githubusercontent.com/TheBadRoger
 cmake -S . -B cmake-build-release -DCMAKE_BUILD_TYPE=Release
 cmake --build cmake-build-release -j
 ./cmake-build-release/term4k
+```
+
+## Packaging Options
+
+By default, CPack generates DEB packages. RPM generation is controlled by `TERM4K_ENABLE_RPM` and requires `rpmbuild`.
+
+```bash
+# DEB only
+cmake -S . -B cmake-build-release -DCMAKE_BUILD_TYPE=Release -DTERM4K_ENABLE_RPM=OFF
+cmake --build cmake-build-release --target package -j
+```
+
+```bash
+# DEB + RPM (when rpmbuild is available)
+cmake -S . -B cmake-build-release -DCMAKE_BUILD_TYPE=Release -DTERM4K_ENABLE_RPM=ON
+cmake --build cmake-build-release --target package -j
+```
+
+```bash
+# CI strict mode: fail configure if RPM is requested but rpmbuild is missing
+cmake -S . -B cmake-build-release -DCMAKE_BUILD_TYPE=Release -DTERM4K_ENABLE_RPM=ON -DTERM4K_STRICT_RPM_CHECK=ON
+cmake --build cmake-build-release --target package -j
 ```
 
