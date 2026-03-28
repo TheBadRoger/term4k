@@ -154,14 +154,6 @@ def compress_for_chart(language_lines: dict[str, int], max_items: int = MAX_CHAR
     return head
 
 
-def make_table_rows(language_lines: dict[str, int], total_lines: int) -> list[str]:
-    rows: list[str] = []
-    for language, lines in language_lines.items():
-        share = 0.0 if total_lines == 0 else (lines / total_lines * 100)
-        rows.append(f"| {language} | {format_num(lines)} | {share:.2f}% |")
-    return rows
-
-
 def build_mermaid_pie(language_lines: dict[str, int], total_lines: int) -> str:
     chart_items = compress_for_chart(language_lines)
     lines = ["```mermaid", "pie showData", '    title Code Distribution by Language (LOC)']
@@ -177,7 +169,6 @@ def build_stats_block_en(
     total_lines: int,
     cpp_stats: CppSymbolStats,
 ) -> str:
-    rows = "\n".join(make_table_rows(language_lines, total_lines))
     pie = build_mermaid_pie(language_lines, total_lines)
     return (
         f"{STATS_START}\n"
@@ -189,10 +180,7 @@ def build_stats_block_en(
         f"**Heap allocations via `new` (C++, heuristic):** `{format_num(cpp_stats.heap_new_count)}`  \n"
         f"**`make_shared`/`make_unique` calls (C++, heuristic):** `{format_num(cpp_stats.smart_factory_count)}`\n\n"
         "### Distribution Chart\n\n"
-        f"{pie}\n\n"
-        "| Language | Lines | Share |\n"
-        "| --- | ---: | ---: |\n"
-        f"{rows}\n"
+        f"{pie}\n"
         f"{STATS_END}"
     )
 
@@ -202,7 +190,6 @@ def build_stats_block_zh(
     total_lines: int,
     cpp_stats: CppSymbolStats,
 ) -> str:
-    rows = "\n".join(make_table_rows(language_lines, total_lines))
     pie = build_mermaid_pie(language_lines, total_lines)
     return (
         f"{STATS_START}\n"
@@ -214,10 +201,7 @@ def build_stats_block_zh(
         f"**`new` 堆分配次数（C++，启发式）：** `{format_num(cpp_stats.heap_new_count)}`  \n"
         f"**`make_shared`/`make_unique` 调用次数（C++，启发式）：** `{format_num(cpp_stats.smart_factory_count)}`\n\n"
         "### 分布图\n\n"
-        f"{pie}\n\n"
-        "| 语言 | 行数 | 占比 |\n"
-        "| --- | ---: | ---: |\n"
-        f"{rows}\n"
+        f"{pie}\n"
         f"{STATS_END}"
     )
 

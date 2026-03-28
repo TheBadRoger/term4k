@@ -17,8 +17,7 @@
 
 ## 文档导航
 
-- [架构与模块分工（中文）](./ARCHITECTURE_zh_CN.md)
-- [Architecture Overview (English)](./ARCHITECTURE.md)
+- [架构与模块分工](./ARCHITECTURE_zh_CN.md)
 
 term4k 是一个基于 C++20 的终端节奏游戏项目。
 
@@ -52,14 +51,6 @@ pie showData
     "CMake (2.3%)" : 252
     "JSON (0.7%)" : 76
 ```
-
-| 语言 | 行数 | 占比 |
-| --- | ---: | ---: |
-| C++ | 9,432 | 86.83% |
-| Markdown | 680 | 6.26% |
-| Shell | 422 | 3.89% |
-| CMake | 252 | 2.32% |
-| JSON | 76 | 0.70% |
 <!-- README_STATS:END -->
 
 ## 安装（推荐）

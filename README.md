@@ -17,8 +17,7 @@
 
 ## Documentation
 
-- [Architecture Overview (English)](documents/ARCHITECTURE.md)
-- [架构与模块分工（中文）](documents/ARCHITECTURE_zh_CN.md)
+- [Architecture Overview](documents/ARCHITECTURE.md)
 
 term4k is a terminal-based rhythm game project written in C++20.
 
@@ -52,14 +51,6 @@ pie showData
     "CMake (2.3%)" : 252
     "JSON (0.7%)" : 76
 ```
-
-| Language | Lines | Share |
-| --- | ---: | ---: |
-| C++ | 9,432 | 86.83% |
-| Markdown | 680 | 6.26% |
-| Shell | 422 | 3.89% |
-| CMake | 252 | 2.32% |
-| JSON | 76 | 0.70% |
 <!-- README_STATS:END -->
 
 ## Install (Recommended)
