@@ -36,11 +36,11 @@ It includes:
 <!-- README_STATS:START -->
 ## Live Code Statistics
 
-> Last updated: `2026-04-01 15:36:54` (GMT).
+> Last updated: `2026-04-01 15:50:05` (GMT).
 
 | Metric | Value |
 | --- | ---: |
-| Total code lines | `13,256` |
+| Total code lines | `13,250` |
 | Class/Struct definitions (C++) | `96` |
 | Function definitions (C++, heuristic) | `539` |
 | Stack object declarations (C++, heuristic) | `513` |
@@ -55,7 +55,7 @@ It includes:
 pie showData
     title Code Distribution by Language (LOC)
     "C++ (87.7%)" : 11622
-    "Markdown (5.3%)" : 698
+    "Markdown (5.2%)" : 692
     "Shell (3.2%)" : 422
     "CMake (2.1%)" : 276
     "JSON (1.8%)" : 238
