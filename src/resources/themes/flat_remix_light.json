@@ -1,0 +1,16 @@
+{
+  "id": "flat_remix_light",
+  "name": "Flat Remix Light",
+  "surface.bg": "#f7f7f7",
+  "surface.panel": "#efefef",
+  "surface.alt": "#e6e6e6",
+  "text.primary": "#2d2d2d",
+  "text.muted": "#616161",
+  "accent.primary": "#3f51b5",
+  "accent.secondary": "#009688",
+  "status.ok": "#43a047",
+  "status.warn": "#fb8c00",
+  "status.error": "#e53935",
+  "border.normal": "#c7c7c7"
+}
+

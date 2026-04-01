@@ -27,6 +27,12 @@ public:
      */
     bool load(const std::string &filePath);
 
+    // Loads locale by environment-aware search order:
+    //   1) development path: src/resources/i18n/
+    //   2) production path: AppDirs::localeDir()
+    // Falls back to en_US within each path group.
+    bool ensureLocaleLoaded(const std::string &preferredLocale);
+
     /**
      * Looks up translation by key.
      * Returns key itself when not found.

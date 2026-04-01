@@ -9,6 +9,7 @@
 #include "ui/UserSettingsUI.h"
 #include "ui/UserStatUI.h"
 
+#include <atomic>
 #include <condition_variable>
 #include <functional>
 #include <mutex>
@@ -78,6 +79,16 @@ public:
 
     UIScene currentScene() const;
 
+    // Configures target scene when UserLoginUI reports a successful submit.
+    void setLoginSuccessTargetScene(UIScene scene);
+
+    UIScene loginSuccessTargetScene() const;
+
+    // Configures target scene when UserSettingsUI reports a successful apply action.
+    void setUserSettingsSuccessTargetScene(UIScene scene);
+
+    UIScene userSettingsSuccessTargetScene() const;
+
 private:
     struct UISlot {
         std::thread worker;
@@ -90,6 +101,10 @@ private:
     static bool startSlot(UISlot &slot, const std::function<void()> &onStart, const std::function<void()> &onStop);
     static void stopSlot(UISlot &slot);
     static bool slotRunning(const UISlot &slot);
+
+    void startSceneEventBridge();
+
+    void stopSceneEventBridge();
 
     mutable std::mutex bindingMutex_;
 
@@ -119,12 +134,18 @@ private:
     UISlot userLoginSlot_;
     UISlot userSettingsSlot_;
 
+    std::thread sceneEventBridgeWorker_;
+    std::atomic<bool> sceneEventBridgeStopRequested_ = false;
+    mutable std::mutex sceneEventBridgeMutex_;
+    mutable std::mutex sceneEventBridgeConfigMutex_;
+    UIScene loginSuccessTargetScene_ = UIScene::StartMenu;
+    UIScene userSettingsSuccessTargetScene_ = UIScene::StartMenu;
+
     mutable std::mutex sceneMutex_;
     UIScene currentScene_ = UIScene::None;
 };
 
 } // namespace ui
-
 
 
 

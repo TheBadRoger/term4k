@@ -1,0 +1,16 @@
+{
+  "id": "tomorrow_night",
+  "name": "Tomorrow Night",
+  "surface.bg": "#1d1f21",
+  "surface.panel": "#282a2e",
+  "surface.alt": "#373b41",
+  "text.primary": "#c5c8c6",
+  "text.muted": "#969896",
+  "accent.primary": "#81a2be",
+  "accent.secondary": "#b294bb",
+  "status.ok": "#b5bd68",
+  "status.warn": "#f0c674",
+  "status.error": "#cc6666",
+  "border.normal": "#4d5057"
+}
+

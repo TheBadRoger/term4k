@@ -1,8 +1,13 @@
 #include "UIThreadRuntime.h"
 
+#include <chrono>
 #include <functional>
 
 namespace ui {
+
+namespace {
+constexpr int kSceneEventPollMs = 10;
+}
 
 UIThreadRuntime::~UIThreadRuntime() {
     stopAll();
@@ -130,7 +135,9 @@ bool UIThreadRuntime::startUserLogin() {
         ui = userLoginUI_;
     }
     if (!ui) return false;
-    return startSlot(userLoginSlot_, [ui]() { ui->show(); }, [ui]() { ui->hide(); });
+    const bool started = startSlot(userLoginSlot_, [ui]() { ui->show(); }, [ui]() { ui->hide(); });
+    if (started) startSceneEventBridge();
+    return started;
 }
 
 bool UIThreadRuntime::startUserSettings() {
@@ -140,7 +147,9 @@ bool UIThreadRuntime::startUserSettings() {
         ui = userSettingsUI_;
     }
     if (!ui) return false;
-    return startSlot(userSettingsSlot_, [ui]() { ui->show(); }, [ui]() { ui->hide(); });
+    const bool started = startSlot(userSettingsSlot_, [ui]() { ui->show(); }, [ui]() { ui->hide(); });
+    if (started) startSceneEventBridge();
+    return started;
 }
 
 void UIThreadRuntime::stopStartMenu() { stopSlot(startMenuSlot_); }
@@ -149,8 +158,18 @@ void UIThreadRuntime::stopChartList() { stopSlot(chartListSlot_); }
 void UIThreadRuntime::stopGameplay() { stopSlot(gameplaySlot_); }
 void UIThreadRuntime::stopGameplaySettlement() { stopSlot(gameplaySettlementSlot_); }
 void UIThreadRuntime::stopUserStat() { stopSlot(userStatSlot_); }
-void UIThreadRuntime::stopUserLogin() { stopSlot(userLoginSlot_); }
-void UIThreadRuntime::stopUserSettings() { stopSlot(userSettingsSlot_); }
+void UIThreadRuntime::stopUserLogin() {
+    stopSlot(userLoginSlot_);
+    if (!isUserLoginRunning() && !isUserSettingsRunning()) {
+        stopSceneEventBridge();
+    }
+}
+void UIThreadRuntime::stopUserSettings() {
+    stopSlot(userSettingsSlot_);
+    if (!isUserLoginRunning() && !isUserSettingsRunning()) {
+        stopSceneEventBridge();
+    }
+}
 
 void UIThreadRuntime::startAll() {
     startStartMenu();
@@ -230,6 +249,26 @@ UIThreadRuntime::UIScene UIThreadRuntime::currentScene() const {
     return currentScene_;
 }
 
+void UIThreadRuntime::setLoginSuccessTargetScene(const UIScene scene) {
+    std::lock_guard<std::mutex> lock(sceneEventBridgeConfigMutex_);
+    loginSuccessTargetScene_ = scene;
+}
+
+UIThreadRuntime::UIScene UIThreadRuntime::loginSuccessTargetScene() const {
+    std::lock_guard<std::mutex> lock(sceneEventBridgeConfigMutex_);
+    return loginSuccessTargetScene_;
+}
+
+void UIThreadRuntime::setUserSettingsSuccessTargetScene(const UIScene scene) {
+    std::lock_guard<std::mutex> lock(sceneEventBridgeConfigMutex_);
+    userSettingsSuccessTargetScene_ = scene;
+}
+
+UIThreadRuntime::UIScene UIThreadRuntime::userSettingsSuccessTargetScene() const {
+    std::lock_guard<std::mutex> lock(sceneEventBridgeConfigMutex_);
+    return userSettingsSuccessTargetScene_;
+}
+
 bool UIThreadRuntime::startSlot(UISlot &slot,
                                 const std::function<void()> &onStart,
                                 const std::function<void()> &onStop) {
@@ -271,6 +310,64 @@ void UIThreadRuntime::stopSlot(UISlot &slot) {
 bool UIThreadRuntime::slotRunning(const UISlot &slot) {
     std::lock_guard<std::mutex> lock(slot.mutex);
     return slot.running;
+}
+
+void UIThreadRuntime::startSceneEventBridge() {
+    std::lock_guard<std::mutex> lock(sceneEventBridgeMutex_);
+    if (sceneEventBridgeWorker_.joinable()) return;
+
+    sceneEventBridgeStopRequested_ = false;
+    sceneEventBridgeWorker_ = std::thread([this]() {
+        while (!sceneEventBridgeStopRequested_) {
+            UserLoginUI *loginUI = nullptr;
+            UserSettingsUI *settingsUI = nullptr;
+            {
+                std::lock_guard<std::mutex> bindingLock(bindingMutex_);
+                loginUI = userLoginUI_;
+                settingsUI = userSettingsUI_;
+            }
+
+            bool consumed = false;
+            if (isUserLoginRunning() && loginUI && loginUI->consumeSubmitSucceeded() &&
+                currentScene() == UIScene::UserLogin) {
+                UIScene target = loginSuccessTargetScene();
+                if (target == UIScene::UserLogin) target = UIScene::StartMenu;
+                switchTo(target);
+                consumed = true;
+            }
+
+            if (consumed) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(kSceneEventPollMs));
+                continue;
+            }
+
+            if (isUserSettingsRunning() && settingsUI && settingsUI->consumeApplySucceeded() &&
+                currentScene() == UIScene::UserSettings) {
+                UIScene target = userSettingsSuccessTargetScene();
+                if (target == UIScene::UserSettings) target = UIScene::StartMenu;
+                switchTo(target);
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(kSceneEventPollMs));
+        }
+    });
+}
+
+void UIThreadRuntime::stopSceneEventBridge() {
+    std::thread worker;
+    {
+        std::lock_guard<std::mutex> lock(sceneEventBridgeMutex_);
+        sceneEventBridgeStopRequested_ = true;
+        if (!sceneEventBridgeWorker_.joinable()) return;
+        if (sceneEventBridgeWorker_.get_id() == std::this_thread::get_id()) {
+            // The bridge worker requested its own stop via scene switching.
+            // Leave the thread object owned by runtime; a later external stop joins it.
+            return;
+        }
+        worker = std::move(sceneEventBridgeWorker_);
+    }
+
+    worker.join();
 }
 
 } // namespace ui

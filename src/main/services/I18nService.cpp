@@ -1,8 +1,14 @@
 #include "I18nService.h"
 
+#include "config/AppDirs.h"
 #include "utils/ErrorNotifier.h"
 #include "utils/JsonUtils.h"
+
 #include <algorithm>
+#include <filesystem>
+#include <vector>
+
+namespace fs = std::filesystem;
 
 // -- Singleton ---------------------------------------------------------------
 
@@ -39,6 +45,29 @@ bool I18nService::load(const std::string &filePath) {
     translations.clear();
     translations.insert(json.values().begin(), json.values().end());
     return true;
+}
+
+bool I18nService::ensureLocaleLoaded(const std::string &preferredLocale) {
+    const std::string locale = preferredLocale.empty() ? "en_US" : preferredLocale;
+    if (!translations.empty() && currentLocale == locale) return true;
+
+    AppDirs::init();
+
+    std::vector<std::string> candidates;
+    candidates.push_back("src/resources/i18n/" + locale + ".json");
+    if (locale != "en_US") candidates.push_back("src/resources/i18n/en_US.json");
+
+    const std::string productionDir = AppDirs::localeDir();
+    candidates.push_back(productionDir + locale + ".json");
+    if (locale != "en_US") candidates.push_back(productionDir + "en_US.json");
+
+    for (const std::string &path : candidates) {
+        std::error_code ec;
+        if (!fs::exists(path, ec) || fs::is_directory(path, ec)) continue;
+        if (load(path)) return true;
+    }
+
+    return false;
 }
 
 // -- I18n::get / operator() -------------------------------------------------

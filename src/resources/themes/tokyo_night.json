@@ -1,0 +1,16 @@
+{
+  "id": "tokyo_night",
+  "name": "Tokyo Night",
+  "surface.bg": "#1a1b26",
+  "surface.panel": "#16161e",
+  "surface.alt": "#24283b",
+  "text.primary": "#c0caf5",
+  "text.muted": "#9aa5ce",
+  "accent.primary": "#7aa2f7",
+  "accent.secondary": "#bb9af7",
+  "status.ok": "#9ece6a",
+  "status.warn": "#e0af68",
+  "status.error": "#f7768e",
+  "border.normal": "#414868"
+}
+

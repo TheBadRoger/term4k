@@ -5,6 +5,7 @@
 #include "RuntimeConfigs.h"
 
 #include "AppDirs.h"
+#include "services/ThemePresetService.h"
 #include "utils/JsonUtils.h"
 
 #include <algorithm>
@@ -14,9 +15,8 @@
 #include <sstream>
 
 namespace {
-    constexpr const char* kThemeLight = "light";
-    constexpr const char* kThemeDark  = "dark";
-    constexpr uint32_t kSchemaVersion = 1;
+    constexpr const char* kDefaultTheme = "lazyvim_dark";
+    constexpr uint32_t kSchemaVersion   = 1;
 
     std::string ensureTrailingSlash(std::string path) {
         if (!path.empty() && path.back() != '/') path.push_back('/');
@@ -80,10 +80,19 @@ namespace {
     }
 
     std::string normalizeTheme(const std::string &raw, const std::string &fallback) {
-        const std::string value = toLower(trim(raw));
-        if (value == kThemeDark) return kThemeDark;
-        if (value == kThemeLight) return kThemeLight;
-        return fallback;
+        std::string value = toLower(trim(raw));
+        if (!value.empty() && ThemePresetService::themeExists(value)) return value;
+        if (!value.empty()) return value;
+
+        std::string fallbackValue = toLower(trim(fallback));
+        if (!fallbackValue.empty() && ThemePresetService::themeExists(fallbackValue)) return fallbackValue;
+        if (!fallbackValue.empty()) return fallbackValue;
+
+        const std::vector<std::string> discovered = ThemePresetService::listThemeIds();
+        if (!discovered.empty()) return discovered.front();
+
+
+        return kDefaultTheme;
     }
 
     ChartEndTimingMode parseChartEndTimingMode(const std::string &raw, const ChartEndTimingMode fallback) {
@@ -136,7 +145,7 @@ namespace {
     }
 } // namespace
 
-std::string RuntimeConfigs::theme                     = kThemeDark;
+std::string RuntimeConfigs::theme                     = kDefaultTheme;
 std::string RuntimeConfigs::locale                    = "en_US";
 float RuntimeConfigs::musicVolume                     = 1.0f;
 float RuntimeConfigs::hitSoundVolume                  = 1.0f;
@@ -152,7 +161,7 @@ std::vector<uint8_t> RuntimeConfigs::keyBindings      = {68, 70, 74, 75};
 std::string RuntimeConfigs::configDirOverride;
 
 void RuntimeConfigs::resetToDefaults() {
-    theme  = kThemeDark;
+    theme  = normalizeTheme(kDefaultTheme, kDefaultTheme);
     locale = "en_US";
 
     musicVolume     = 1.0f;
@@ -236,7 +245,7 @@ bool RuntimeConfigs::saveForUser(const std::string &username) {
     json.set("schemaVersion", std::to_string(kSchemaVersion));
 
     // Clamp values before writing to avoid persisting invalid settings.
-    json.set("appearance.theme", normalizeTheme(theme, kThemeDark));
+    json.set("appearance.theme", normalizeTheme(theme, kDefaultTheme));
     json.set("appearance.locale", locale.empty() ? "zh_CN" : locale);
 
     json.set("audio.musicVolume", floatToString(std::clamp(musicVolume, 0.0f, 1.0f)));

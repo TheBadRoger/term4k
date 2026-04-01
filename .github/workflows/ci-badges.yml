@@ -1,0 +1,109 @@
+name: CI Badges
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "includes/**"
+      - "CMakeLists.txt"
+      - "src/test/**"
+      - ".github/workflows/ci-badges.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "includes/**"
+      - "CMakeLists.txt"
+      - "src/test/**"
+      - ".github/workflows/ci-badges.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  ci-and-update-badges:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        id: configure
+        continue-on-error: true
+        run: cmake -S . -B cmake-build-ci -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        id: build
+        if: steps.configure.outcome == 'success'
+        continue-on-error: true
+        run: cmake --build cmake-build-ci -j
+
+      - name: Unit tests
+        id: unit_tests
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: ctest --test-dir cmake-build-ci --output-on-failure
+
+      - name: Generate badge payloads
+        if: always()
+        run: |
+          mkdir -p .github/badges
+
+          build_status="failing"
+          build_color="dc2626"
+          if [ "${{ steps.build.outcome }}" = "success" ]; then
+            build_status="passing"
+            build_color="2ea44f"
+          fi
+
+          tests_status="failing"
+          tests_color="dc2626"
+          if [ "${{ steps.unit_tests.outcome }}" = "success" ]; then
+            tests_status="passing"
+            tests_color="2ea44f"
+          elif [ "${{ steps.build.outcome }}" != "success" ]; then
+            tests_status="not run"
+            tests_color="9ca3af"
+          fi
+
+          cat > .github/badges/build.json <<EOF
+          {
+            "schemaVersion": 1,
+            "label": "Build",
+            "message": "${build_status}",
+            "color": "${build_color}"
+          }
+          EOF
+
+          cat > .github/badges/unit-tests.json <<EOF
+          {
+            "schemaVersion": 1,
+            "label": "Unit Tests",
+            "message": "${tests_status}",
+            "color": "${tests_color}"
+          }
+          EOF
+
+      - name: Commit and push badge updates
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/badges/build.json .github/badges/unit-tests.json
+          if git diff --cached --quiet; then
+            echo "No CI badge changes to commit."
+            exit 0
+          fi
+          git commit -m "ci: update build and unit test badges"
+          git push
+
+      - name: Fail workflow if build or tests failed
+        if: always()
+        run: |
+          if [ "${{ steps.configure.outcome }}" != "success" ] || [ "${{ steps.build.outcome }}" != "success" ] || [ "${{ steps.unit_tests.outcome }}" != "success" ]; then
+            echo "Build or unit tests failed."
+            exit 1
+          fi
+

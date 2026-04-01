@@ -38,6 +38,7 @@ set(TERM4K_CORE_SOURCES
         src/main/services/GameplaySessionService.cpp
         src/main/services/GameplayRecordService.cpp
         src/main/services/SettingsService.cpp
+        src/main/services/ThemePresetService.cpp
         src/main/ui/StartMenuUI.cpp
         src/main/ui/AdminUserStatUI.cpp
         src/main/ui/ChartListUI.cpp
@@ -55,6 +56,11 @@ set(TERM4K_CORE_SOURCES
         src/main/instances/GameplaySettlementInstance.cpp
         src/main/instances/SettingsInstance.cpp
         src/main/utils/ErrorNotifier.cpp
+        src/main/utils/tui/DisplayWidth.cpp
+        src/main/utils/tui/FramePacer.cpp
+        src/main/utils/tui/InputDecoder.cpp
+        src/main/utils/tui/RenderBuffer.cpp
+        src/main/utils/tui/SceneLoopCore.cpp
         src/main/config/AppDirs.cpp
         src/main/config/RuntimeConfigs.cpp)
 
@@ -76,6 +82,11 @@ if (TERM4K_BUILD_TESTS)
             src/test/unit/utils/ErrorNotifierTests.cpp
             src/test/unit/utils/LiteDBUtilsTests.cpp
             src/test/unit/utils/AppDirsTests.cpp
+            src/test/unit/utils/tui/DisplayWidthTests.cpp
+            src/test/unit/utils/tui/FramePacerTests.cpp
+            src/test/unit/utils/tui/InputDecoderTests.cpp
+            src/test/unit/utils/tui/RenderBufferTests.cpp
+            src/test/unit/utils/tui/SceneLoopCoreTests.cpp
             src/test/unit/config/RuntimeConfigsTests.cpp
             src/test/unit/services/I18nTests.cpp
             src/test/unit/services/ChartIOTests.cpp
@@ -84,6 +95,7 @@ if (TERM4K_BUILD_TESTS)
             src/test/unit/services/UserServiceTests.cpp
             src/test/unit/services/AuthenticatedUserServiceTests.cpp
             src/test/unit/services/GameplayRecordServiceTests.cpp
+            src/test/unit/services/ThemePresetServiceTests.cpp
             src/test/unit/instances/ChartListInstanceTests.cpp
             src/test/unit/instances/UserLoginInstanceTests.cpp
             src/test/unit/instances/UserStatInstanceTests.cpp
@@ -92,6 +104,7 @@ if (TERM4K_BUILD_TESTS)
             src/test/unit/instances/GameplaySettlementInstanceTests.cpp
             src/test/unit/instances/SettingsInstanceTests.cpp
             src/test/unit/ui/UIThreadRuntimeTests.cpp
+            src/test/unit/ui/UserSettingsUITests.cpp
     )
 
     target_include_directories(term4k_tests PRIVATE src/test)
@@ -112,6 +125,11 @@ install(TARGETS term4k
 # Runtime: locale files -> /usr/share/term4k/i18n/
 install(DIRECTORY src/resources/i18n/
         DESTINATION ${CMAKE_INSTALL_DATADIR}/term4k/i18n
+        COMPONENT Runtime)
+
+# Runtime: theme preset files -> /usr/share/term4k/themes/
+install(DIRECTORY src/resources/themes/
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/term4k/themes
         COMPONENT Runtime)
 
 # Runtime: create empty chart directory skeleton -> /usr/share/term4k/charts/
@@ -136,6 +154,7 @@ set(TERM4K_PUBLIC_HEADERS
         src/main/services/GameplaySessionService.h
         src/main/services/GameplayRecordService.h
         src/main/services/SettingsService.h
+        src/main/services/ThemePresetService.h
         src/main/ui/StartMenuUI.h
         src/main/ui/AdminUserStatUI.h
         src/main/ui/ChartListUI.h
@@ -162,7 +181,12 @@ set(TERM4K_PUBLIC_HEADERS
         src/main/entities/Rating.h
         src/main/entities/User.h
         src/main/entities/GameplayChartData.h
-        src/main/utils/ErrorNotifier.h)
+        src/main/utils/ErrorNotifier.h
+        src/main/utils/tui/DisplayWidth.h
+        src/main/utils/tui/FramePacer.h
+        src/main/utils/tui/InputDecoder.h
+        src/main/utils/tui/RenderBuffer.h
+        src/main/utils/tui/SceneLoopCore.h)
 
 install(FILES ${TERM4K_PUBLIC_HEADERS}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/term4k
