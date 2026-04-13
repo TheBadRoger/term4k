@@ -91,7 +91,7 @@ TEST_CASE("GameplaySettlementInstance captures final result and writes one recor
     std::vector<std::string> fields;
     std::string token;
     while (iss >> token) fields.push_back(token);
-    REQUIRE(fields.size() == 8);
+    REQUIRE(fields.size() == 12);
     REQUIRE(fields[0] == "1000");
     REQUIRE(fields[1] == "chart_settle");
     REQUIRE(fields[2] == "song_settle");
@@ -99,6 +99,10 @@ TEST_CASE("GameplaySettlementInstance captures final result and writes one recor
     REQUIRE(fields[4] == std::to_string(static_cast<uint32_t>(expected.getScore())));
     REQUIRE(fields[6] == "999");
     REQUIRE(fields[7] == std::to_string(expected.getMaxCombo()));
+    REQUIRE(fields[8] == std::to_string(expected.getChartNoteCount()));
+    REQUIRE(fields[9] == std::to_string(expected.getPerfectCount()));
+    REQUIRE(fields[10] == std::to_string(expected.getEarlyCount()));
+    REQUIRE(fields[11] == std::to_string(expected.getLateCount()));
 
     AuthenticatedUserService::logout();
     UserLoginService::logout();

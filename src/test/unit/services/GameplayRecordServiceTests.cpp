@@ -33,7 +33,7 @@ TEST_CASE("GameplayRecordService saves final result for current normal user", "[
 
     const auto records = ProofedRecordsDAO::readVerifiedRecordByUID("1000");
     REQUIRE(records.size() == 1);
-    REQUIRE(records.front() == "1000 chart_alpha song_alpha player_a 1234 98.25 123456 77");
+    REQUIRE(records.front() == "1000 chart_alpha song_alpha player_a 1234 98.25 123456 77 0 0 0 0");
 
     AuthenticatedUserService::logout();
     UserLoginService::logout();

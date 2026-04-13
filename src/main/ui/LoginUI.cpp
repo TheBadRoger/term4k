@@ -1,0 +1,117 @@
+#include "ui/LoginUI.h"
+
+#include "config/RuntimeConfigs.h"
+#include "instances/UserLoginInstance.h"
+#include "services/I18nService.h"
+#include "ui/ThemeAdapter.h"
+
+#include <ftxui/component/component.hpp>
+#include <ftxui/component/screen_interactive.hpp>
+#include <ftxui/dom/elements.hpp>
+
+#include <string>
+
+namespace ui {
+namespace {
+
+ftxui::Color toColor(const Rgb &rgb) { return ftxui::Color::RGB(rgb.r, rgb.g, rgb.b); }
+
+ftxui::Color highContrastOn(const Rgb &bg) {
+    const int luma = (bg.r * 299 + bg.g * 587 + bg.b * 114) / 1000;
+    return luma >= 140 ? ftxui::Color::Black : ftxui::Color::White;
+}
+
+} // namespace
+
+int LoginUI::run() {
+    using namespace ftxui;
+
+    I18nService::instance().ensureLocaleLoaded(RuntimeConfigs::locale);
+    auto tr = [](const std::string &key) { return I18nService::instance().get(key); };
+    const ThemePalette palette = ThemeAdapter::resolveFromRuntime();
+
+    std::string username;
+    std::string password;
+    std::string status = tr("ui.auth.status.idle");
+
+    InputOption userOpt;
+    userOpt.placeholder = tr("ui.login.username");
+    auto usernameInput = Input(&username, userOpt);
+
+    InputOption passOpt;
+    passOpt.password = true;
+    passOpt.placeholder = tr("ui.login.password");
+    auto passwordInput = Input(&password, passOpt);
+
+    auto container = Container::Vertical({usernameInput, passwordInput});
+    int focusIndex = 0;
+
+    auto screen = ScreenInteractive::Fullscreen();
+    auto root = Renderer(container, [&] {
+        Element user = window(text(" " + tr("ui.login.username") + " "), usernameInput->Render()) |
+                       color(toColor(focusIndex == 0 ? palette.accentPrimary : palette.borderNormal)) |
+                       bgcolor(toColor(palette.surfacePanel));
+        Element pass = window(text(" " + tr("ui.login.password") + " "), passwordInput->Render()) |
+                       color(toColor(focusIndex == 1 ? palette.accentPrimary : palette.borderNormal)) |
+                       bgcolor(toColor(palette.surfacePanel));
+
+        Element hint = text(tr("ui.login.hint")) | color(toColor(palette.textMuted));
+        Element statusLine = text(status) | color(toColor(palette.textMuted));
+
+        Element submit = text(" " + tr("ui.auth.action.login") + " ") |
+                         bold |
+                         color(highContrastOn(palette.accentPrimary)) |
+                         bgcolor(toColor(palette.accentPrimary));
+
+        return vbox({
+                   text(tr("ui.auth.login_title")) | bold | color(toColor(palette.accentPrimary)),
+                   separator(),
+                   user,
+                   pass,
+                   text(""),
+                   hbox({submit, text("  "), hint}),
+                   separator(),
+                   statusLine,
+               }) |
+               borderRounded |
+               bgcolor(toColor(palette.surfaceBg)) |
+               color(toColor(palette.textPrimary)) |
+               center;
+    });
+
+    UserLoginInstance loginInstance;
+    auto app = CatchEvent(root, [&](const Event &event) {
+        if (event == Event::Escape || event == Event::Character('q')) {
+            screen.ExitLoopClosure()();
+            return true;
+        }
+        if (event == Event::Tab) {
+            focusIndex = (focusIndex + 1) % 2;
+            return true;
+        }
+        if (event == Event::ArrowUp || event == Event::Character('k')) {
+            focusIndex = (focusIndex + 1) % 2;
+            return true;
+        }
+        if (event == Event::ArrowDown || event == Event::Character('j')) {
+            focusIndex = (focusIndex + 1) % 2;
+            return true;
+        }
+        if (event == Event::Return) {
+            if (loginInstance.login(username, password)) {
+                status = tr("ui.login.result.login_succeeded");
+            } else {
+                status = tr("ui.login.result.login_failed");
+            }
+            return true;
+        }
+        if (focusIndex == 0) return usernameInput->OnEvent(event);
+        return passwordInput->OnEvent(event);
+    });
+
+    screen.Loop(app);
+    return 0;
+}
+
+} // namespace ui
+

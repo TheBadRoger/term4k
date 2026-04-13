@@ -29,7 +29,7 @@ TEST_CASE (
     REQUIRE(RuntimeConfigs::chartPreloadMs == 2000);
     REQUIRE(RuntimeConfigs::chartEndTimingMode == ChartEndTimingMode::AfterChartEnd);
 
-    const std::vector<uint8_t> expected = {68, 70, 74, 75};
+    const std::vector<uint8_t> expected = {'D', 'F', 'H', 'J', 0, 0, 0, 0, 0, 0};
     REQUIRE(RuntimeConfigs::keyBindings == expected);
 }
 

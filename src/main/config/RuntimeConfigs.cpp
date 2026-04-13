@@ -164,7 +164,7 @@ int32_t RuntimeConfigs::chartOffsetMs                 = 0;
 int32_t RuntimeConfigs::chartDisplayOffsetMs          = 0;
 uint32_t RuntimeConfigs::chartPreloadMs               = 2000;
 ChartEndTimingMode RuntimeConfigs::chartEndTimingMode = ChartEndTimingMode::AfterChartEnd;
-std::vector<uint8_t> RuntimeConfigs::keyBindings      = {68, 70, 74, 75};
+std::vector<uint8_t> RuntimeConfigs::keyBindings      = {'D', 'F', 'H', 'J', 0, 0, 0, 0, 0, 0};
 std::string RuntimeConfigs::configDirOverride;
 
 void RuntimeConfigs::resetToDefaults() {
@@ -182,7 +182,7 @@ void RuntimeConfigs::resetToDefaults() {
     chartDisplayOffsetMs = 0;
     chartPreloadMs       = 2000;
     chartEndTimingMode   = ChartEndTimingMode::AfterChartEnd;
-    keyBindings          = {68, 70, 74, 75};
+    keyBindings          = {'D', 'F', 'H', 'J', 0, 0, 0, 0, 0, 0};
 }
 
 std::string RuntimeConfigs::settingsFilePathForUser(const std::string &username) {
@@ -266,7 +266,7 @@ bool RuntimeConfigs::saveForUser(const std::string &username) {
     json.set("gameplay.chartDisplayOffsetMs", std::to_string(chartDisplayOffsetMs));
     json.set("gameplay.chartPreloadMs", std::to_string(std::clamp<uint32_t>(chartPreloadMs, 0, 60000)));
     json.set("gameplay.chartEndTimingMode", chartEndTimingModeToString(chartEndTimingMode));
-    json.set("gameplay.keyBindings", keyBindings.empty() ? "68,70,74,75" : keyBindingsToString(keyBindings));
+    json.set("gameplay.keyBindings", keyBindings.empty() ? "68,70,72,74,0,0,0,0,0,0" : keyBindingsToString(keyBindings));
 
     std::ofstream out(path, std::ios::trunc);
     if (!out.is_open()) return false;

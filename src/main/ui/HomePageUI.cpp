@@ -29,6 +29,11 @@ ftxui::Color toColor(const Rgb &rgb) {
     return ftxui::Color::RGB(rgb.r, rgb.g, rgb.b);
 }
 
+ftxui::Color highContrastOn(const Rgb &bg) {
+    const int luma = (bg.r * 299 + bg.g * 587 + bg.b * 114) / 1000;
+    return luma >= 140 ? ftxui::Color::Black : ftxui::Color::White;
+}
+
 std::string nowDateTimeString() {
     const auto now = std::chrono::system_clock::now();
     const std::time_t t = std::chrono::system_clock::to_time_t(now);
@@ -73,7 +78,7 @@ int HomePageUI::run() {
         tr("ui.home.menu.player_info"),
         tr("ui.home.menu.quit"),
     };
-    const std::array<std::string, 4> icons = {"", "", "", ""};
+    const std::array<std::string, 4> icons = {"", "", "", ""};
     int selected = 0;
 
     auto root = Renderer([&] {
@@ -92,7 +97,7 @@ int HomePageUI::run() {
             if (static_cast<int>(i) == selected) {
                 line = line |
                        bold |
-                       color(toColor(palette.surfaceBg)) |
+                       color(highContrastOn(palette.accentPrimary)) |
                        bgcolor(toColor(palette.accentPrimary));
             } else {
                 line = line | color(toColor(palette.textPrimary));
@@ -141,7 +146,7 @@ int HomePageUI::run() {
                flex;
     });
 
-    auto app = CatchEvent(root, [&](Event event) {
+    auto app = CatchEvent(root, [&](const Event &event) {
         if (event == Event::Character('q') || event == Event::Escape) {
             ticking = false;
             screen.ExitLoopClosure()();
@@ -161,6 +166,20 @@ int HomePageUI::run() {
         if (event == Event::Return) {
             if (selected == 0) {
                 nextAction = 1;
+                ticking = false;
+                screen.ExitLoopClosure()();
+                return true;
+            }
+
+            if (selected == 1) {
+                nextAction = 2;
+                ticking = false;
+                screen.ExitLoopClosure()();
+                return true;
+            }
+
+            if (selected == 2) {
+                nextAction = 5;
                 ticking = false;
                 screen.ExitLoopClosure()();
                 return true;

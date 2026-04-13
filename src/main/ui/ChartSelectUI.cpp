@@ -4,6 +4,7 @@
 #include "config/RuntimeConfigs.h"
 #include "dao/ProofedRecordsDAO.h"
 #include "instances/ChartListInstance.h"
+#include "services/AuthenticatedUserService.h"
 #include "services/I18nService.h"
 #include "ui/ThemeAdapter.h"
 
@@ -13,10 +14,15 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstdlib>
+#include <filesystem>
 #include <iomanip>
+#include <map>
 #include <sstream>
 #include <string>
+#include <system_error>
+#include <unordered_map>
 #include <vector>
 
 namespace ui {
@@ -26,9 +32,33 @@ ftxui::Color toColor(const Rgb &rgb) {
     return ftxui::Color::RGB(rgb.r, rgb.g, rgb.b);
 }
 
-std::string formatFloat(float value, int precision = 2) {
+ftxui::Color highContrastOn(const Rgb &bg) {
+    const int luma = (bg.r * 299 + bg.g * 587 + bg.b * 114) / 1000;
+    return luma >= 140 ? ftxui::Color::Black : ftxui::Color::White;
+}
+
+std::string formatFloat(const float value, const int precision = 2) {
     std::ostringstream out;
     out << std::fixed << std::setprecision(precision) << value;
+    return out.str();
+}
+
+float accuracyPercent(const float accuracy) {
+    if (accuracy >= 0.0f && accuracy <= 1.0f) return accuracy * 100.0f;
+    return accuracy;
+}
+
+std::string formatFileSize(const std::uintmax_t sizeBytes) {
+    constexpr double kb = 1024.0;
+    constexpr double mb = 1024.0 * 1024.0;
+    if (sizeBytes < 1024) return std::to_string(sizeBytes) + "B";
+    std::ostringstream out;
+    out << std::fixed << std::setprecision(1);
+    if (static_cast<double>(sizeBytes) >= mb) {
+        out << (static_cast<double>(sizeBytes) / mb) << "MB";
+    } else {
+        out << (static_cast<double>(sizeBytes) / kb) << "KB";
+    }
     return out.str();
 }
 
@@ -42,6 +72,219 @@ struct SortKeyOption {
     std::string ascLabelKey;
     std::string descLabelKey;
 };
+
+struct GradeVisual {
+    std::string label;
+    ftxui::Color color = ftxui::Color::Default;
+    bool rainbow = false;
+};
+
+struct AchievementVisual {
+    std::string label;
+    ftxui::Color color = ftxui::Color::Default;
+    bool rainbow = false;
+};
+
+struct LeaderboardEntry {
+    std::string uid;
+    std::string name;
+    uint32_t score = 0;
+    float accuracy = 0.0f;
+};
+
+struct LeaderboardView {
+    std::vector<LeaderboardEntry> top;
+    int selfRank = -1;
+    bool selfInTop = false;
+    LeaderboardEntry self;
+};
+
+bool isDigitsOnly(const std::string &value) {
+    return !value.empty() && value.find_first_not_of("0123456789") == std::string::npos;
+}
+
+bool parseLeaderboardRecord(const std::string &record,
+                            std::string *outUid,
+                            std::string *outChartId,
+                            std::string *outName,
+                            uint32_t *outScore,
+                            float *outAccuracy) {
+    std::istringstream iss(record);
+    std::vector<std::string> fields;
+    std::string token;
+    while (iss >> token) fields.push_back(token);
+    if (fields.size() < 6) return false;
+
+    const bool uidFormat = (fields.size() >= 7) && isDigitsOnly(fields[0]);
+    if (!uidFormat) return false;
+
+    try {
+        *outUid = fields[0];
+        *outChartId = fields[1];
+        *outName = fields[3];
+        *outScore = static_cast<uint32_t>(std::stoul(fields[4]));
+        *outAccuracy = std::stof(fields[5]);
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+LeaderboardView buildLeaderboard(const std::vector<std::string> &records,
+                                 const std::string &chartId,
+                                 const bool byAccuracy,
+                                 const std::string &selfUid) {
+    LeaderboardView out;
+    if (chartId.empty()) return out;
+
+    std::unordered_map<std::string, LeaderboardEntry> bestByUid;
+    for (const auto &raw : records) {
+        std::string uid;
+        std::string cid;
+        std::string name;
+        uint32_t score = 0;
+        float accuracy = 0.0f;
+        if (!parseLeaderboardRecord(raw, &uid, &cid, &name, &score, &accuracy)) continue;
+        if (cid != chartId) continue;
+
+        auto it = bestByUid.find(uid);
+        if (it == bestByUid.end()) {
+            bestByUid[uid] = {uid, name.empty() ? uid : name, score, accuracy};
+            continue;
+        }
+
+        const bool better = byAccuracy
+            ? (accuracy > it->second.accuracy ||
+               (accuracy == it->second.accuracy && score > it->second.score))
+            : (score > it->second.score ||
+               (score == it->second.score && accuracy > it->second.accuracy));
+
+        if (better) {
+            it->second.name = name.empty() ? uid : name;
+            it->second.score = score;
+            it->second.accuracy = accuracy;
+        }
+    }
+
+    std::vector<LeaderboardEntry> all;
+    all.reserve(bestByUid.size());
+    for (const auto &it : bestByUid) all.push_back(it.second);
+
+    std::stable_sort(all.begin(), all.end(), [&](const LeaderboardEntry &a, const LeaderboardEntry &b) {
+        if (byAccuracy) {
+            if (a.accuracy != b.accuracy) return a.accuracy > b.accuracy;
+            if (a.score != b.score) return a.score > b.score;
+        } else {
+            if (a.score != b.score) return a.score > b.score;
+            if (a.accuracy != b.accuracy) return a.accuracy > b.accuracy;
+        }
+        return a.uid < b.uid;
+    });
+
+    const std::size_t topCount = std::min<std::size_t>(99, all.size());
+    out.top.assign(all.begin(), all.begin() + static_cast<long long>(topCount));
+
+    for (std::size_t i = 0; i < all.size(); ++i) {
+        if (!selfUid.empty() && all[i].uid == selfUid) {
+            out.selfRank = static_cast<int>(i + 1);
+            out.self = all[i];
+            out.selfInTop = (i < topCount);
+            break;
+        }
+    }
+    return out;
+}
+
+GradeVisual gradeFromAccuracy(const float accPercent) {
+    if (accPercent >= 100.0f) return {"SSS+", ftxui::Color::White, true};
+    if (accPercent >= 99.5f) return {"SSS", ftxui::Color::RGB(255, 215, 0), false};
+    if (accPercent >= 99.0f) return {"SS+", ftxui::Color::RGB(192, 192, 192), false};
+    if (accPercent >= 98.0f) return {"SS", ftxui::Color::RGB(255, 80, 40), false};
+    if (accPercent >= 97.0f) return {"S+", ftxui::Color::RGB(150, 0, 0), false};
+    if (accPercent >= 95.0f) return {"S", ftxui::Color::RGB(170, 85, 255), false};
+    if (accPercent >= 90.0f) return {"A", ftxui::Color::RGB(255, 105, 180), false};
+    if (accPercent >= 80.0f) return {"B", ftxui::Color::RGB(255, 240, 160), false};
+    if (accPercent >= 70.0f) return {"C", ftxui::Color::RGB(120, 200, 255), false};
+    if (accPercent >= 60.0f) return {"D", ftxui::Color::RGB(120, 255, 120), false};
+    return {"-", ftxui::Color::RGB(130, 130, 130), false};
+}
+
+AchievementVisual achievementFromStats(const ChartPlayStats &stats) {
+    if (stats.hasULT) return {"ULT", ftxui::Color::White, true};
+    if (stats.hasAP) return {"AP", ftxui::Color::RGB(255, 215, 0), false};
+    if (stats.hasFC) return {"FC", ftxui::Color::RGB(192, 192, 192), false};
+    return {};
+}
+
+const std::array<ftxui::Color, 7> kRainbow = {
+    ftxui::Color::RGB(255, 0, 0),
+    ftxui::Color::RGB(255, 127, 0),
+    ftxui::Color::RGB(255, 255, 0),
+    ftxui::Color::RGB(0, 200, 0),
+    ftxui::Color::RGB(0, 120, 255),
+    ftxui::Color::RGB(75, 0, 130),
+    ftxui::Color::RGB(148, 0, 211),
+};
+
+const std::map<char, std::array<std::string, 6>> kBlockGlyph = {
+    {'A', {" █████╗ ", "██╔══██╗", "███████║", "██╔══██║", "██║  ██║", "╚═╝  ╚═╝"}},
+    {'B', {"██████╗ ", "██╔══██╗", "██████╔╝", "██╔══██╗", "██████╔╝", "╚═════╝ "}},
+    {'C', {" ██████╗", "██╔════╝", "██║     ", "██║     ", "╚██████╗", " ╚═════╝"}},
+    {'D', {"██████╗ ", "██╔══██╗", "██║  ██║", "██║  ██║", "██████╔╝", "╚═════╝ "}},
+    {'F', {"███████╗", "██╔════╝", "█████╗  ", "██╔══╝  ", "██║     ", "╚═╝     "}},
+    {'L', {"██╗     ", "██║     ", "██║     ", "██║     ", "███████╗", "╚══════╝"}},
+    {'P', {"██████╗ ", "██╔══██╗", "██████╔╝", "██╔═══╝ ", "██║     ", "╚═╝     "}},
+    {'S', {"███████╗", "██╔════╝", "███████╗", "╚════██║", "███████║", "╚══════╝"}},
+    {'T', {"████████╗", "╚══██╔══╝", "   ██║   ", "   ██║   ", "   ██║   ", "   ╚═╝   "}},
+    {'U', {"██╗   ██╗", "██║   ██║", "██║   ██║", "██║   ██║", "╚██████╔╝", " ╚═════╝ "}},
+};
+
+ftxui::Element colorizedToken(const std::string &token, const ftxui::Color &baseColor, const bool rainbow) {
+    using namespace ftxui;
+    if (!rainbow) return text(token) | bold | color(baseColor);
+
+    Elements chars;
+    std::size_t colorIndex = 0;
+    for (char ch : token) {
+        if (ch == ' ') {
+            chars.push_back(text(" "));
+            continue;
+        }
+        chars.push_back(text(std::string(1, ch)) | bold | color(kRainbow[colorIndex % kRainbow.size()]));
+        ++colorIndex;
+    }
+    return hbox(std::move(chars));
+}
+
+ftxui::Element blockArtWord(const std::string &word, const ftxui::Color &baseColor, const bool rainbow) {
+    using namespace ftxui;
+    std::string core = word;
+    bool superscriptPlus = false;
+    if (!core.empty() && core.back() == '+') {
+        superscriptPlus = true;
+        core.pop_back();
+    }
+
+    std::array<std::string, 6> lines = {"", "", "", "", "", ""};
+    for (char ch : core) {
+        const char up = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
+        const auto it = kBlockGlyph.find(up);
+        if (it == kBlockGlyph.end()) continue;
+        for (std::size_t i = 0; i < lines.size(); ++i) {
+            lines[i] += it->second[i] + std::string(" ");
+        }
+    }
+    if (superscriptPlus) lines[0] += " +";
+
+    return vbox({
+        colorizedToken(lines[0], baseColor, rainbow),
+        colorizedToken(lines[1], baseColor, rainbow),
+        colorizedToken(lines[2], baseColor, rainbow),
+        colorizedToken(lines[3], baseColor, rainbow),
+        colorizedToken(lines[4], baseColor, rainbow),
+        colorizedToken(lines[5], baseColor, rainbow),
+    });
+}
 
 } // namespace
 
@@ -63,6 +306,7 @@ int ChartSelectUI::run() {
 
     ChartListInstance chartList;
     chartList.refresh(AppDirs::chartsDir(), statsUID);
+    const std::vector<std::string> allVerifiedRecords = AuthenticatedUserService::loadAllVerifiedRecords();
 
     const std::array<SearchModeOption, 3> searchModes = {{
         {ChartSearchMode::DisplayName, "ui.chart_select.search_mode.display_name"},
@@ -97,7 +341,16 @@ int ChartSelectUI::run() {
     std::string pendingStartName;
 
     auto screen = ScreenInteractive::Fullscreen();
-    auto searchInput = Input(&searchQuery, tr("ui.chart_select.search_placeholder"));
+    InputOption searchInputOption;
+    searchInputOption.placeholder = tr("ui.chart_select.search_placeholder");
+    searchInputOption.transform = [&](const InputState &state) {
+        // Keep input line background consistent with panel instead of using default white focus style.
+        return state.element |
+               color(toColor(state.is_placeholder ? palette.textMuted : palette.textPrimary)) |
+               bgcolor(toColor(palette.surfacePanel));
+    };
+
+    auto searchInput = Input(&searchQuery, searchInputOption);
     auto container = Container::Vertical({searchInput});
 
     auto root = Renderer(container, [&] {
@@ -118,13 +371,48 @@ int ChartSelectUI::run() {
             for (std::size_t i = 0; i < ids.size(); ++i) {
                 const auto it = chartList.items().find(ids[i]);
                 std::string title = ids[i];
-                if (it != chartList.items().end() && !it->second.chart.getDisplayName().empty()) {
-                    title = it->second.chart.getDisplayName();
+                std::string sizeText;
+                Element rightInfo = text("");
+
+                if (it != chartList.items().end()) {
+                    const auto &entry = it->second;
+                    if (!entry.chart.getDisplayName().empty()) title = entry.chart.getDisplayName();
+
+                    std::error_code ec;
+                    const auto fileSize = std::filesystem::file_size(entry.chartFilePath, ec);
+                    if (!ec) sizeText = formatFileSize(fileSize);
+
+                    if (entry.stats.playCount > 0) {
+                        const float acc = accuracyPercent(entry.stats.bestAccuracy);
+                        const GradeVisual grade = gradeFromAccuracy(acc);
+                        const AchievementVisual ach = achievementFromStats(entry.stats);
+
+                        Elements rightParts;
+                        rightParts.push_back(colorizedToken(grade.label, grade.color, grade.rainbow));
+                        if (!ach.label.empty()) {
+                            rightParts.push_back(text(" | ") | color(toColor(palette.textMuted)));
+                            rightParts.push_back(colorizedToken(ach.label, ach.color, ach.rainbow));
+                        }
+                        rightInfo = hbox(std::move(rightParts));
+                    }
                 }
 
-                Element row = text(title);
+                Elements leftParts;
+                leftParts.push_back(text(title));
+                if (!sizeText.empty()) {
+                    leftParts.push_back(text(" "));
+                    leftParts.push_back(text(sizeText) | dim | color(toColor(palette.textMuted)));
+                }
+
+                Element row = hbox({
+                    hbox(std::move(leftParts)) | flex,
+                    rightInfo,
+                });
+
                 if (i == selectedIndex) {
-                    row = row | bold | color(toColor(palette.surfaceBg)) | bgcolor(toColor(palette.accentPrimary));
+                    row = row | bold |
+                          color(highContrastOn(palette.accentPrimary)) |
+                          bgcolor(toColor(palette.accentPrimary));
                 } else {
                     row = row | color(toColor(palette.textPrimary));
                 }
@@ -132,10 +420,7 @@ int ChartSelectUI::run() {
             }
         }
 
-        Element searchBox = vbox({
-                               searchInput->Render() |
-                                   color(toColor(searchQuery.empty() ? palette.textMuted : palette.textPrimary)),
-                           });
+        Element searchBox = vbox({searchInput->Render()});
 
         searchBox = window(text("  " + tr("ui.chart_select.search") + " "), searchBox) |
                     color(toColor(focusSearch ? palette.accentPrimary : palette.borderNormal)) |
@@ -163,6 +448,10 @@ int ChartSelectUI::run() {
         std::string playCountText = "0";
         std::string bestScoreText = "0";
         std::string bestAccText = "0.00";
+        std::string bestRatingText;
+        bool hasPlayRecord = false;
+        GradeVisual currentGrade;
+        AchievementVisual currentAchievement;
 
         if (hasSelection) {
             const auto it = chartList.items().find(ids[selectedIndex]);
@@ -177,7 +466,15 @@ int ChartSelectUI::run() {
                 keyText = std::to_string(chart.getKeyCount());
                 playCountText = std::to_string(entry.stats.playCount);
                 bestScoreText = std::to_string(entry.stats.bestScore);
-                bestAccText = formatFloat(entry.stats.bestAccuracy * 100.0f, 2) + "%";
+                const float bestAccPercent = accuracyPercent(entry.stats.bestAccuracy);
+                bestAccText = formatFloat(bestAccPercent, 2) + "%";
+
+                hasPlayRecord = entry.stats.playCount > 0;
+                if (hasPlayRecord) {
+                    bestRatingText = formatFloat(static_cast<float>(entry.stats.bestSingleRating), 2);
+                    currentGrade = gradeFromAccuracy(bestAccPercent);
+                    currentAchievement = achievementFromStats(entry.stats);
+                }
             }
         }
 
@@ -206,10 +503,31 @@ int ChartSelectUI::run() {
                     bgcolor(toColor(palette.surfacePanel)) |
                     size(HEIGHT, LESS_THAN, 12);
 
-        Element scorePanel = vbox({
-                                infoRow("ui.chart_select.score.play_count", playCountText),
-                                infoRow("ui.chart_select.score.best_score", bestScoreText),
-                                infoRow("ui.chart_select.score.best_accuracy", bestAccText),
+        Elements scoreRows = {
+            infoRow("ui.chart_select.score.play_count", playCountText),
+            infoRow("ui.chart_select.score.best_score", bestScoreText),
+            infoRow("ui.chart_select.score.best_accuracy", bestAccText),
+        };
+        if (hasPlayRecord) {
+            scoreRows.push_back(infoRow("ui.chart_select.score.best_rating", bestRatingText));
+        }
+
+        Element artBlock = text("");
+        if (hasPlayRecord) {
+            Elements lines;
+            lines.push_back(blockArtWord(currentGrade.label, currentGrade.color, currentGrade.rainbow));
+            if (!currentAchievement.label.empty()) {
+                lines.push_back(blockArtWord(currentAchievement.label,
+                                             currentAchievement.color,
+                                             currentAchievement.rainbow));
+            }
+            artBlock = vbox(std::move(lines));
+        }
+
+        Element scorePanel = hbox({
+                                vbox(std::move(scoreRows)),
+                                filler(),
+                                artBlock,
                             });
 
         scorePanel = window(text("  " + tr("ui.chart_select.score.title") + " "), scorePanel) |
@@ -217,9 +535,80 @@ int ChartSelectUI::run() {
                      bgcolor(toColor(palette.surfacePanel)) |
                      flex;
 
+        const bool rankByAccuracy = sortKeys[sortKeyIndex].key == ChartListSortKey::BestAccuracy;
+        const std::string currentChartId = hasSelection ? idText : "";
+        const LeaderboardView leaderboard = buildLeaderboard(allVerifiedRecords,
+                                                             currentChartId,
+                                                             rankByAccuracy,
+                                                             statsUID);
+
+        Elements rankRows;
+        if (leaderboard.top.empty()) {
+            rankRows.push_back(text(tr("ui.chart_select.leaderboard.no_records")) | color(toColor(palette.textMuted)));
+        } else {
+            for (std::size_t i = 0; i < leaderboard.top.size(); ++i) {
+                const int rank = static_cast<int>(i + 1);
+                const auto &e = leaderboard.top[i];
+
+                ftxui::Color rankColor = toColor(palette.textPrimary);
+                if (rank == 1) rankColor = ftxui::Color::RGB(255, 215, 0);
+                else if (rank == 2) rankColor = ftxui::Color::RGB(192, 192, 192);
+                else if (rank == 3) rankColor = ftxui::Color::RGB(205, 127, 50);
+
+                std::string metric = rankByAccuracy
+                    ? (formatFloat(accuracyPercent(e.accuracy), 2) + "%")
+                    : std::to_string(e.score);
+
+                Element row = hbox({
+                    text(std::to_string(rank) + ".") | color(rankColor),
+                    text(" "),
+                    text(e.name) | color(rankColor),
+                    filler(),
+                    text(metric) | color(rankColor),
+                });
+
+                if (!statsUID.empty() && e.uid == statsUID) {
+                    row = row | bgcolor(ftxui::Color::RGB(45, 45, 45));
+                }
+                rankRows.push_back(row);
+            }
+        }
+
+        std::string selfText = tr("ui.chart_select.leaderboard.self_rank");
+        if (leaderboard.selfRank > 0) {
+            const std::string selfMetric = rankByAccuracy
+                ? (formatFloat(accuracyPercent(leaderboard.self.accuracy), 2) + "%")
+                : std::to_string(leaderboard.self.score);
+            selfText += std::to_string(leaderboard.selfRank) + "  " + selfMetric;
+        } else {
+            selfText += "-";
+        }
+
+        Element leaderboardPanel = vbox({
+                                     text(rankByAccuracy
+                                              ? tr("ui.chart_select.leaderboard.mode_acc")
+                                              : tr("ui.chart_select.leaderboard.mode_score")) |
+                                         color(toColor(palette.textMuted)),
+                                     separator(),
+                                     vbox(std::move(rankRows)) | frame | flex,
+                                     separator(),
+                                     text(selfText) | color(toColor(palette.textMuted)),
+                                 });
+
+        leaderboardPanel = window(text("  " + tr("ui.chart_select.leaderboard.title") + " "), leaderboardPanel) |
+                           color(toColor(palette.accentPrimary)) |
+                           bgcolor(toColor(palette.surfacePanel)) |
+                           size(WIDTH, EQUAL, 44);
+
+        Element lowerPanels = hbox({
+                                scorePanel,
+                                text(" "),
+                                leaderboardPanel,
+                            }) | flex;
+
         Element rightColumn = vbox({
                                  metaPanel,
-                                 scorePanel,
+                                 lowerPanels,
                              }) |
                              flex;
 
@@ -246,7 +635,7 @@ int ChartSelectUI::run() {
         const auto capsule = [&](const std::string &caption, const std::string &value) {
             return text(" " + caption + value + " ") |
                    bold |
-                   color(toColor(palette.surfaceBg)) |
+                   color(highContrastOn(palette.accentPrimary)) |
                    bgcolor(toColor(palette.accentPrimary));
         };
 
@@ -295,14 +684,14 @@ int ChartSelectUI::run() {
                                  confirmBody
                              ) |
                              color(toColor(palette.accentPrimary)) |
-                                     bgcolor(toColor(palette.surfacePanel)) |
+                             bgcolor(toColor(palette.surfacePanel)) |
                              size(WIDTH, EQUAL, 58);
 
         Element overlay = hbox({filler(), confirmPanel, filler()}) | vcenter | flex;
         return dbox({base, overlay});
     });
 
-    auto app = CatchEvent(root, [&](Event event) {
+    auto app = CatchEvent(root, [&](const Event &event) {
         if (showStartConfirm) {
             if (event == Event::Escape || event == Event::Character('n') || event == Event::Character('N')) {
                 showStartConfirm = false;

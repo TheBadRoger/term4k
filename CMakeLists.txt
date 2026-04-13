@@ -113,6 +113,8 @@ if (TERM4K_ENABLE_TUI)
     target_sources(term4k PRIVATE
             src/main/ui/HomePageUI.cpp
             src/main/ui/ChartSelectUI.cpp
+            src/main/ui/SettingsUI.cpp
+            src/main/ui/UserInfoUI.cpp
     )
 
     target_compile_definitions(term4k PRIVATE TERM4K_ENABLE_TUI=1)
