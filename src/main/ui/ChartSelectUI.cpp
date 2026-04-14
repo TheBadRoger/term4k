@@ -6,7 +6,8 @@
 #include "instances/ChartListInstance.h"
 #include "services/AuthenticatedUserService.h"
 #include "services/I18nService.h"
-#include "ui/ThemeAdapter.h"
+#include "ui/UIColors.h"
+#include "utils/StringUtils.h"
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
@@ -28,14 +29,6 @@
 namespace ui {
 namespace {
 
-ftxui::Color toColor(const Rgb &rgb) {
-    return ftxui::Color::RGB(rgb.r, rgb.g, rgb.b);
-}
-
-ftxui::Color highContrastOn(const Rgb &bg) {
-    const int luma = (bg.r * 299 + bg.g * 587 + bg.b * 114) / 1000;
-    return luma >= 140 ? ftxui::Color::Black : ftxui::Color::White;
-}
 
 std::string formatFloat(const float value, const int precision = 2) {
     std::ostringstream out;
@@ -99,9 +92,6 @@ struct LeaderboardView {
     LeaderboardEntry self;
 };
 
-bool isDigitsOnly(const std::string &value) {
-    return !value.empty() && value.find_first_not_of("0123456789") == std::string::npos;
-}
 
 bool parseLeaderboardRecord(const std::string &record,
                             std::string *outUid,
@@ -115,7 +105,7 @@ bool parseLeaderboardRecord(const std::string &record,
     while (iss >> token) fields.push_back(token);
     if (fields.size() < 6) return false;
 
-    const bool uidFormat = (fields.size() >= 7) && isDigitsOnly(fields[0]);
+    const bool uidFormat = (fields.size() >= 7) && string_utils::isDigitsOnly(fields[0]);
     if (!uidFormat) return false;
 
     try {
@@ -339,6 +329,7 @@ int ChartSelectUI::run() {
     std::string actionStatus = tr("ui.chart_select.action.idle");
     bool showStartConfirm = false;
     std::string pendingStartName;
+    bool leaderboardByAccuracy = false;
 
     auto screen = ScreenInteractive::Fullscreen();
     InputOption searchInputOption;
@@ -535,7 +526,7 @@ int ChartSelectUI::run() {
                      bgcolor(toColor(palette.surfacePanel)) |
                      flex;
 
-        const bool rankByAccuracy = sortKeys[sortKeyIndex].key == ChartListSortKey::BestAccuracy;
+        const bool rankByAccuracy = leaderboardByAccuracy;
         const std::string currentChartId = hasSelection ? idText : "";
         const LeaderboardView leaderboard = buildLeaderboard(allVerifiedRecords,
                                                              currentChartId,
@@ -753,7 +744,16 @@ int ChartSelectUI::run() {
             return true;
         }
 
-        if (!focusSearch && (event == Event::ArrowUp || event == Event::Character('k'))) {
+        if (!focusSearch && (event == Event::Character('l') || event == Event::Character('L'))) {
+            leaderboardByAccuracy = !leaderboardByAccuracy;
+            actionStatus = tr("ui.chart_select.action.leaderboard_mode_switched") +
+                           tr(leaderboardByAccuracy
+                                  ? "ui.chart_select.leaderboard.mode_acc"
+                                  : "ui.chart_select.leaderboard.mode_score");
+            return true;
+        }
+
+                if (!focusSearch && (event == Event::ArrowUp || event == Event::Character('k'))) {
             const auto &ids = chartList.filteredOrderedChartIDs();
             if (!ids.empty()) {
                 selectedIndex = (selectedIndex + ids.size() - 1) % ids.size();
@@ -787,7 +787,8 @@ int ChartSelectUI::run() {
             return true;
         }
 
-        return focusSearch ? container->OnEvent(event) : false;
+        if (focusSearch) return container->OnEvent(event);
+        return true; // consume all events when list is focused
     });
 
     screen.Loop(app);

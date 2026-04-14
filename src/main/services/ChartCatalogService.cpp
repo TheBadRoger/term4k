@@ -5,6 +5,8 @@
 #include "dao/ProofedRecordsDAO.h"
 #include "entities/Chart.h"
 #include "utils/ErrorNotifier.h"
+#include "utils/RatingUtils.h"
+#include "utils/StringUtils.h"
 
 #include <algorithm>
 #include <cctype>
@@ -212,20 +214,11 @@ bool tryBuildChartItem(const fs::path &folder,
 
 bool isUIDRecord(const std::vector<std::string> &fields) {
     if (fields.size() < 7) return false;
-    return !fields[0].empty() && fields[0].find_first_not_of("0123456789") == std::string::npos;
-}
-
-double normalizeAccuracy(const float accuracy) {
-    if (accuracy > 1.0f) return static_cast<double>(accuracy) / 100.0;
-    if (accuracy < 0.0f) return 0.0;
-    return static_cast<double>(accuracy);
+    return string_utils::isDigitsOnly(fields[0]);
 }
 
 double singleChartEvaluation(const float difficulty, const float accuracy) {
-    const double a = normalizeAccuracy(accuracy);
-    const double a2 = a * a;
-    const double a4 = a2 * a2;
-    return static_cast<double>(difficulty) * (a - a2 + a4);
+    return rating_utils::singleChartEvaluation(difficulty, accuracy);
 }
 
 std::map<std::string, ChartPlayStats> buildStatsByChart(const std::string &chartsRoot,

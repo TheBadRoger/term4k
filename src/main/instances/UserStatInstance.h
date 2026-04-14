@@ -16,7 +16,6 @@ public:
     double potential() const;
 
 private:
-    static double singleChartEvaluation(float difficulty, float accuracy);
 
     ChartRecordCollection userRecords;
     double currentRating    = 0.0;

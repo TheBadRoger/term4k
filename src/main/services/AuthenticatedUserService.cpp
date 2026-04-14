@@ -3,6 +3,7 @@
 #include "ChartCatalogService.h"
 #include "UserLoginService.h"
 #include "dao/ProofedRecordsDAO.h"
+#include "utils/StringUtils.h"
 
 #include <algorithm>
 #include <sstream>
@@ -22,11 +23,6 @@ namespace {
         bool valid         = false;
     };
 
-    bool isDigitsOnly(const std::string &value) {
-        return !value.empty() &&
-               value.find_first_not_of("0123456789") == std::string::npos;
-    }
-
     ParsedRecord parseRecord(const std::string &record) {
         std::istringstream iss(record);
         std::vector<std::string> fields;
@@ -38,7 +34,7 @@ namespace {
         ParsedRecord parsed;
         if (fields.size() < 6) return parsed;
 
-        const bool uidFormat           = (fields.size() >= 7) && isDigitsOnly(fields[0]);
+        const bool uidFormat           = (fields.size() >= 7) && string_utils::isDigitsOnly(fields[0]);
         const std::size_t uidIdx       = uidFormat ? 0 : static_cast<std::size_t>(-1);
         const std::size_t chartIdx     = uidFormat ? 1 : 0;
         const std::size_t scoreIdx     = uidFormat ? 4 : 3;

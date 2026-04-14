@@ -3,7 +3,7 @@
 #include "config/RuntimeConfigs.h"
 #include "instances/UserLoginInstance.h"
 #include "services/I18nService.h"
-#include "ui/ThemeAdapter.h"
+#include "ui/UIColors.h"
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
@@ -12,16 +12,6 @@
 #include <string>
 
 namespace ui {
-namespace {
-
-ftxui::Color toColor(const Rgb &rgb) { return ftxui::Color::RGB(rgb.r, rgb.g, rgb.b); }
-
-ftxui::Color highContrastOn(const Rgb &bg) {
-    const int luma = (bg.r * 299 + bg.g * 587 + bg.b * 114) / 1000;
-    return luma >= 140 ? ftxui::Color::Black : ftxui::Color::White;
-}
-
-} // namespace
 
 int RegisterUI::run() {
     using namespace ftxui;

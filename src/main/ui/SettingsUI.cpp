@@ -6,7 +6,7 @@
 #include "services/AuthenticatedUserService.h"
 #include "services/I18nService.h"
 #include "services/SettingsService.h"
-#include "ui/ThemeAdapter.h"
+#include "ui/UIColors.h"
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
@@ -22,12 +22,6 @@
 namespace ui {
 namespace {
 
-ftxui::Color toColor(const Rgb &rgb) { return ftxui::Color::RGB(rgb.r, rgb.g, rgb.b); }
-
-ftxui::Color highContrastOn(const Rgb &bg) {
-    const int luma = (bg.r * 299 + bg.g * 587 + bg.b * 114) / 1000;
-    return luma >= 140 ? ftxui::Color::Black : ftxui::Color::White;
-}
 
 std::string boolLabel(const bool value, const std::string &onText, const std::string &offText) {
     return value ? onText : offText;
@@ -92,6 +86,39 @@ int SettingsUI::run() {
     bool showKeyEditor = false;
     int keyEditorLane = 0;
     bool keyCaptureMode = false;
+
+    // Helper: compute a summary of duplicate-key conflicts.
+    // Returns empty string when no conflicts exist.
+    auto computeConflictWarning = [&]() -> std::string {
+        const std::vector<uint8_t> &bindings = draft.getKeyBindings();
+        std::string result;
+        for (std::size_t i = 0; i < bindings.size(); ++i) {
+            if (bindings[i] == 0) continue;
+            // Skip keys already described in an earlier iteration.
+            bool alreadySeen = false;
+            for (std::size_t k = 0; k < i; ++k) {
+                if (bindings[k] == bindings[i]) { alreadySeen = true; break; }
+            }
+            if (alreadySeen) continue;
+            // Collect all lanes sharing this key.
+            std::string lanes;
+            int count = 0;
+            for (std::size_t m = i; m < bindings.size(); ++m) {
+                if (bindings[m] == bindings[i]) {
+                    if (!lanes.empty()) lanes += ",";
+                    lanes += std::to_string(m);
+                    ++count;
+                }
+            }
+            if (count >= 2) {
+                if (!result.empty()) result += " | ";
+                result += std::string(1, keyCodeToDisplay(bindings[i]));
+                result += ":";
+                result += lanes;
+            }
+        }
+        return result;
+    };
 
     auto ensureTenKeySlots = [&] {
         std::vector<uint8_t> bindings = draft.getKeyBindings();
@@ -186,18 +213,21 @@ int SettingsUI::run() {
         }
     };
 
-    auto row = [&](const std::string &label, const std::string &value, const bool selected) {
-        Element e = hbox({
+    auto row = [&](const std::string &label, const std::string &value, const bool selected) -> Element {
+        if (selected) {
+            // When highlighted: apply bold + high-contrast fg + accent bg to the whole row,
+            // without per-element colour overrides so every part stays readable.
+            return hbox({
+                text(label),
+                filler(),
+                text(value) | bold,
+            }) | bold | color(highContrastOn(palette.accentPrimary)) | bgcolor(toColor(palette.accentPrimary));
+        }
+        return hbox({
             text(label) | color(toColor(palette.textMuted)),
             filler(),
-            text(value) | bold,
+            text(value) | bold | color(toColor(palette.textPrimary)),
         });
-        if (selected) {
-            e = e | color(highContrastOn(palette.accentPrimary)) | bgcolor(toColor(palette.accentPrimary));
-        } else {
-            e = e | color(toColor(palette.textPrimary));
-        }
-        return e;
     };
 
     auto screen = ScreenInteractive::Fullscreen();
@@ -283,13 +313,17 @@ int SettingsUI::run() {
                 if (lane < 9) keyRows.push_back(text(""));
             }
 
+            const std::string conflictWarning = computeConflictWarning();
+
             Element editorBody = vbox({
                 text(tr("ui.settings.key_editor.title")) | bold | color(toColor(palette.accentPrimary)),
                 text(keyCaptureMode ? tr("ui.settings.key_editor.capturing") : tr("ui.settings.key_editor.ready")) |
                     color(toColor(palette.textMuted)),
+                conflictWarning.empty()
+                    ? text("")
+                    : text(tr("ui.settings.key_editor.conflict_prefix") + conflictWarning) | color(Color::Red),
                 separator(),
                 vbox(std::move(keyRows)),
-                separator(),
             });
 
             Element popup = window(text(" " + tr("ui.settings.field.key_bindings") + " "), editorBody) |
@@ -322,6 +356,13 @@ int SettingsUI::run() {
                 if (isBindableCharacter(event, &captured)) {
                     std::vector<uint8_t> bindings = draft.getKeyBindings();
                     bindings[static_cast<std::size_t>(keyEditorLane)] = static_cast<uint8_t>(captured);
+                    draft.setKeyBindings(bindings);
+                    keyCaptureMode = false;
+                    return true;
+                }
+                if (event == Event::Backspace) {
+                    std::vector<uint8_t> bindings = draft.getKeyBindings();
+                    bindings[static_cast<std::size_t>(keyEditorLane)] = 0;
                     draft.setKeyBindings(bindings);
                     keyCaptureMode = false;
                     return true;

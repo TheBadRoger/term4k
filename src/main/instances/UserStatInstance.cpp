@@ -1,17 +1,9 @@
 #include "UserStatInstance.h"
 
 #include "services/AuthenticatedUserService.h"
+#include "utils/RatingUtils.h"
 
 #include <algorithm>
-#include <cmath>
-
-namespace {
-    double normalizeAccuracy(const float accuracy) {
-        if (accuracy > 1.0f) return static_cast<double>(accuracy) / 100.0;
-        if (accuracy < 0.0f) return 0.0;
-        return static_cast<double>(accuracy);
-    }
-}
 
 bool UserStatInstance::refresh(const std::string &chartsRoot) {
     userRecords      = AuthenticatedUserService::loadCurrentUserVerifiedRecords(chartsRoot);
@@ -25,7 +17,7 @@ bool UserStatInstance::refresh(const std::string &chartsRoot) {
     for (const auto &key: userRecords.order){
         const auto it = userRecords.records.find(key);
         if (it == userRecords.records.end()) continue;
-        evaluations.push_back(singleChartEvaluation(it->second.chart.getDifficulty(), it->second.accuracy));
+        evaluations.push_back(rating_utils::singleChartEvaluation(it->second.chart.getDifficulty(), it->second.accuracy));
     }
 
     std::sort(evaluations.begin(), evaluations.end(), std::greater<>());
@@ -52,9 +44,3 @@ double UserStatInstance::potential() const {
     return currentPotential;
 }
 
-double UserStatInstance::singleChartEvaluation(const float difficulty, const float accuracy) {
-    const double a  = normalizeAccuracy(accuracy);
-    const double a2 = a * a;
-    const double a4 = a2 * a2;
-    return static_cast<double>(difficulty) * (a - a2 + a4);
-}

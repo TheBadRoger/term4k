@@ -2,9 +2,10 @@
 
 #include "services/AuthenticatedUserService.h"
 #include "services/ChartCatalogService.h"
+#include "utils/RatingUtils.h"
+#include "utils/StringUtils.h"
 
 #include <algorithm>
-#include <cmath>
 #include <map>
 #include <sstream>
 
@@ -19,9 +20,6 @@ namespace {
         bool valid         = false;
     };
 
-    bool isDigitsOnly(const std::string &value) {
-        return !value.empty() && value.find_first_not_of("0123456789") == std::string::npos;
-    }
 
     ParsedRecord parseRecord(const std::string &record) {
         std::istringstream iss(record);
@@ -34,7 +32,7 @@ namespace {
         ParsedRecord parsed;
         if (fields.size() < 6) return parsed;
 
-        const bool uidFormat = (fields.size() >= 7) && isDigitsOnly(fields[0]);
+        const bool uidFormat = (fields.size() >= 7) && string_utils::isDigitsOnly(fields[0]);
         if (!uidFormat) return parsed;
 
         try{
@@ -54,18 +52,6 @@ namespace {
         return parsed;
     }
 
-    double normalizeAccuracy(const float accuracy) {
-        if (accuracy > 1.0f) return static_cast<double>(accuracy) / 100.0;
-        if (accuracy < 0.0f) return 0.0;
-        return static_cast<double>(accuracy);
-    }
-
-    double evaluateSingle(const float difficulty, const float accuracy) {
-        const double a  = normalizeAccuracy(accuracy);
-        const double a2 = a * a;
-        const double a4 = a2 * a2;
-        return static_cast<double>(difficulty) * (a - a2 + a4);
-    }
 
     ChartRecordEntry buildRecordEntry(const ParsedRecord &parsed,
                                       const std::map<std::string, ChartCatalogEntry> &catalogById
@@ -118,7 +104,7 @@ namespace {
             std::size_t serial = 0;
             for (const auto &parsed: parsedRecords){
                 ChartRecordEntry item = buildRecordEntry(parsed, catalogById);
-                evaluations.push_back(evaluateSingle(item.chart.getDifficulty(), item.accuracy));
+                evaluations.push_back(rating_utils::singleChartEvaluation(item.chart.getDifficulty(), item.accuracy));
 
                 const std::string key      = std::to_string(parsed.timestamp) + "#" + std::to_string(serial++);
                 stats.records.records[key] = item;
