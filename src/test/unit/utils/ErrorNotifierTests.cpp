@@ -7,11 +7,16 @@
 #include <vector>
 
 namespace {
+    struct Captured {
+        ErrorNotifier::Level level = ErrorNotifier::Level::Info;
+        std::string text;
+    };
+
     class SinkGuard {
     public:
-        explicit SinkGuard(std::vector<std::string> &messages) {
-            ErrorNotifier::setSink([&messages](const std::string &msg) {
-                messages.push_back(msg);
+        explicit SinkGuard(std::vector<Captured> &messages) {
+            ErrorNotifier::setSink([&messages](const ErrorNotifier::Level level, const std::string &msg) {
+                messages.push_back({level, msg});
             });
         }
 
@@ -27,15 +32,17 @@ TEST_CASE (
 "[utils][ErrorNotifier]"
 )
  {
-    std::vector<std::string> messages;
+    std::vector<Captured> messages;
     SinkGuard guard(messages);
 
     ErrorNotifier::notify("simple");
     ErrorNotifier::notify("ctx", "detail");
 
     REQUIRE(messages.size() == 2);
-    REQUIRE(messages[0] == "simple");
-    REQUIRE(messages[1] == "ctx: detail");
+    REQUIRE(messages[0].level == ErrorNotifier::Level::Error);
+    REQUIRE(messages[0].text == "simple");
+    REQUIRE(messages[1].level == ErrorNotifier::Level::Error);
+    REQUIRE(messages[1].text == "ctx: detail");
 }
 
 TEST_CASE (
@@ -44,7 +51,7 @@ TEST_CASE (
 "[utils][ErrorNotifier]"
 )
  {
-    std::vector<std::string> messages;
+    std::vector<Captured> messages;
     SinkGuard guard(messages);
 
     const std::runtime_error ex("boom");
@@ -52,6 +59,8 @@ TEST_CASE (
     ErrorNotifier::notifyUnknown("mystery");
 
     REQUIRE(messages.size() == 2);
-    REQUIRE(messages[0] == "work: boom");
-    REQUIRE(messages[1] == "mystery: unknown exception");
+    REQUIRE(messages[0].level == ErrorNotifier::Level::Error);
+    REQUIRE(messages[0].text == "work: boom");
+    REQUIRE(messages[1].level == ErrorNotifier::Level::Error);
+    REQUIRE(messages[1].text == "mystery: unknown exception");
 }

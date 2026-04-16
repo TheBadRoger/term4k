@@ -13,6 +13,11 @@
 namespace ui {
 
 int LoginUI::run() {
+    auto screen = ftxui::ScreenInteractive::Fullscreen();
+    return run(screen);
+}
+
+int LoginUI::run(ftxui::ScreenInteractive &screen) {
     using namespace ftxui;
 
     I18nService::instance().ensureLocaleLoaded(RuntimeConfigs::locale);
@@ -25,22 +30,33 @@ int LoginUI::run() {
 
     InputOption userOpt;
     userOpt.placeholder = tr("ui.login.username");
+    userOpt.transform = [&](const InputState &state) {
+        return state.element |
+               color(toColor(state.is_placeholder ? palette.textMuted : palette.textPrimary)) |
+               bgcolor(toColor(palette.surfacePanel));
+    };
     auto usernameInput = Input(&username, userOpt);
 
     InputOption passOpt;
     passOpt.password = true;
     passOpt.placeholder = tr("ui.login.password");
+    passOpt.transform = [&](const InputState &state) {
+        return state.element |
+               color(toColor(state.is_placeholder ? palette.textMuted : palette.textPrimary)) |
+               bgcolor(toColor(palette.surfacePanel));
+    };
     auto passwordInput = Input(&password, passOpt);
 
     auto container = Container::Vertical({usernameInput, passwordInput});
     int focusIndex = 0;
 
-    auto screen = ScreenInteractive::Fullscreen();
     auto root = Renderer(container, [&] {
         Element user = window(text(" " + tr("ui.login.username") + " "), usernameInput->Render()) |
+                       size(WIDTH, GREATER_THAN, 30) |
                        color(toColor(focusIndex == 0 ? palette.accentPrimary : palette.borderNormal)) |
                        bgcolor(toColor(palette.surfacePanel));
         Element pass = window(text(" " + tr("ui.login.password") + " "), passwordInput->Render()) |
+                       size(WIDTH, GREATER_THAN, 30) |
                        color(toColor(focusIndex == 1 ? palette.accentPrimary : palette.borderNormal)) |
                        bgcolor(toColor(palette.surfacePanel));
 

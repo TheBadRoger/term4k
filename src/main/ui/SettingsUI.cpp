@@ -6,6 +6,8 @@
 #include "services/AuthenticatedUserService.h"
 #include "services/I18nService.h"
 #include "services/SettingsService.h"
+#include "ui/MessageOverlay.h"
+#include "ui/TransitionBackdrop.h"
 #include "ui/UIColors.h"
 
 #include <ftxui/component/component.hpp>
@@ -59,6 +61,11 @@ bool isBindableCharacter(const ftxui::Event &event, char *out) {
 } // namespace
 
 int SettingsUI::run() {
+    auto screen = ftxui::ScreenInteractive::Fullscreen();
+    return run(screen);
+}
+
+int SettingsUI::run(ftxui::ScreenInteractive &screen) {
     using namespace ftxui;
 
     I18nService::instance().ensureLocaleLoaded(RuntimeConfigs::locale);
@@ -235,7 +242,6 @@ int SettingsUI::run() {
         });
     };
 
-    auto screen = ScreenInteractive::Fullscreen();
     auto root = Renderer([&] {
         const bool dirty = (draft != committed);
         const std::array<std::string, 3> tabs = {
@@ -345,7 +351,7 @@ int SettingsUI::run() {
 
         Element bottom = text(status) | color(toColor(palette.textMuted));
 
-        return vbox({
+        Element base = vbox({
                    top,
                    separator(),
                    hbox(std::move(tabElements)),
@@ -356,9 +362,17 @@ int SettingsUI::run() {
                bgcolor(toColor(palette.surfaceBg)) |
                color(toColor(palette.textPrimary)) |
                flex;
+
+        Element composed = dbox({base, MessageOverlay::render(palette)});
+        TransitionBackdrop::update(composed);
+        return composed;
     });
 
     auto app = CatchEvent(root, [&](const Event &event) {
+        if (MessageOverlay::handleEvent(event)) {
+            return true;
+        }
+
         if (showKeyEditor) {
             if (keyCaptureMode) {
                 char captured = 0;

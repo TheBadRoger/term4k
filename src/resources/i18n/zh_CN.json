@@ -36,6 +36,7 @@
   "error.record_file_open_failed": "无法打开记录文件",
   "error.proof_file_open_failed": "无法打开校验文件",
   "ui.common.scene_pacing": "场景帧率",
+  "ui.loading.text": "加载中",
   "ui.common.fps_unit": "帧/秒",
   "ui.common.error": "错误",
   "ui.error.operation_failed": "操作失败",

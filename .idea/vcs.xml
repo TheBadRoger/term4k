@@ -2,20 +2,5 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-debug-default/_deps/catch2-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-debug-default/_deps/ftxui-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-debug-default/_deps/miniaudio-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-debug-sysdeps/_deps/catch2-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-debug-sysdeps/_deps/ftxui-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-debug-sysdeps/_deps/miniaudio-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-debug-tui/_deps/catch2-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-debug-tui/_deps/ftxui-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-debug-tui/_deps/miniaudio-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-debug/_deps/catch2-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-debug/_deps/ftxui-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-debug/_deps/miniaudio-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-release/_deps/catch2-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-release/_deps/ftxui-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-release/_deps/miniaudio-src" vcs="Git" />
   </component>
 </project>

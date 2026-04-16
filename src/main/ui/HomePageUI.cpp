@@ -2,6 +2,8 @@
 
 #include "config/RuntimeConfigs.h"
 #include "services/I18nService.h"
+#include "ui/MessageOverlay.h"
+#include "ui/TransitionBackdrop.h"
 #include "ui/UIColors.h"
 
 #include <ftxui/component/component.hpp>
@@ -43,6 +45,11 @@ std::string nowDateTimeString() {
 } // namespace
 
 int HomePageUI::run() {
+    auto screen = ftxui::ScreenInteractive::Fullscreen();
+    return run(screen);
+}
+
+int HomePageUI::run(ftxui::ScreenInteractive &screen) {
     using namespace ftxui;
 
     I18nService::instance().ensureLocaleLoaded(RuntimeConfigs::locale);
@@ -51,7 +58,6 @@ int HomePageUI::run() {
     };
 
     ThemePalette palette = ThemeAdapter::resolveFromRuntime();
-    auto screen = ScreenInteractive::Fullscreen();
     std::atomic<bool> ticking{true};
     int nextAction = 0;
 
@@ -121,7 +127,7 @@ int HomePageUI::run() {
                                 text("github.com/TheBadRoger/term4k") | color(toColor(palette.textMuted)) | align_right,
                             });
 
-        return vbox({
+        Element base = vbox({
                    // Move logo closer to 1/4 of the screen height.
                    filler() | flex,
                    vbox(std::move(logoLines)),
@@ -136,9 +142,17 @@ int HomePageUI::run() {
                bgcolor(toColor(palette.surfaceBg)) |
                color(toColor(palette.textPrimary)) |
                flex;
+
+        Element composed = dbox({base, MessageOverlay::render(palette)});
+        TransitionBackdrop::update(composed);
+        return composed;
     });
 
     auto app = CatchEvent(root, [&](const Event &event) {
+        if (MessageOverlay::handleEvent(event)) {
+            return true;
+        }
+
         if (event == Event::Character('q') || event == Event::Escape) {
             ticking = false;
             screen.ExitLoopClosure()();

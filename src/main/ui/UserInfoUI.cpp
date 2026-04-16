@@ -7,6 +7,8 @@
 #include "instances/UserStatInstance.h"
 #include "services/AuthenticatedUserService.h"
 #include "services/I18nService.h"
+#include "ui/MessageOverlay.h"
+#include "ui/TransitionBackdrop.h"
 #include "ui/UIColors.h"
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
@@ -40,6 +42,11 @@ std::string formatTimestamp(const uint32_t ts) {
 enum class AuthMode { Login, Register };
 } // namespace
 int UserInfoUI::run() {
+    auto screen = ftxui::ScreenInteractive::Fullscreen();
+    return run(screen);
+}
+
+int UserInfoUI::run(ftxui::ScreenInteractive &screen) {
     using namespace ftxui;
     I18nService::instance().ensureLocaleLoaded(RuntimeConfigs::locale);
     auto tr = [](const std::string &key) { return I18nService::instance().get(key); };
@@ -66,6 +73,11 @@ int UserInfoUI::run() {
         isAdmin = AuthenticatedUserService::isAdminUser();
         isGuest = AuthenticatedUserService::isGuestUser() || !hasUser;
         current = AuthenticatedUserService::currentUser();
+
+        // UserLoginService loads RuntimeConfigs on login; refresh locale/theme immediately.
+        I18nService::instance().ensureLocaleLoaded(RuntimeConfigs::locale);
+        palette = ThemeAdapter::resolveFromRuntime();
+
         if (isAdmin) {
             adminStats.refresh(AppDirs::chartsDir());
         } else if (!isGuest) {
@@ -76,30 +88,39 @@ int UserInfoUI::run() {
     refreshSession();
     InputOption userOpt;
     userOpt.placeholder = tr("ui.login.username");
+    userOpt.transform = [&](const InputState &state) {
+        return state.element |
+               color(toColor(state.is_placeholder ? palette.textMuted : palette.textPrimary)) |
+               bgcolor(toColor(palette.surfacePanel));
+    };
     auto usernameInput = Input(&username, userOpt);
     InputOption passOpt;
     passOpt.placeholder = tr("ui.login.password");
     passOpt.password = true;
+    passOpt.transform = [&](const InputState &state) {
+        return state.element |
+               color(toColor(state.is_placeholder ? palette.textMuted : palette.textPrimary)) |
+               bgcolor(toColor(palette.surfacePanel));
+    };
     auto passwordInput = Input(&password, passOpt);
     auto authContainer = Container::Vertical({usernameInput, passwordInput});
-    auto screen = ScreenInteractive::Fullscreen();
     auto root = Renderer(authContainer, [&] {
         if (isGuest) {
             const std::string title = authMode == AuthMode::Login
                                           ? tr("ui.auth.login_title")
                                           : tr("ui.auth.register_title");
             Element userRow = window(text(" " + tr("ui.login.username") + " "), usernameInput->Render())
-                              | size(WIDTH, GREATER_THAN, 25)
+                              | size(WIDTH, GREATER_THAN, 30)
                               | color(toColor(authFocus == 0 ? palette.accentPrimary : palette.borderNormal))
                               | bgcolor(toColor(palette.surfacePanel));
             Element passRow = window(text(" " + tr("ui.login.password") + " "), passwordInput->Render())
-                              | size(WIDTH, GREATER_THAN, 25)
+                              | size(WIDTH, GREATER_THAN, 30)
                               | color(toColor(authFocus == 1 ? palette.accentPrimary : palette.borderNormal))
                               | bgcolor(toColor(palette.surfacePanel));
             Element statusLine = authStatus.empty()
                                      ? text("")
                                      : text(authStatus) | color(toColor(palette.textMuted));
-            return vbox({
+            Element guestBase = vbox({
                        filler(),
                        text(title) | bold | color(toColor(palette.accentPrimary)) | center,
                        text(tr("ui.user_info.auth_switch_hint")) | color(toColor(palette.textMuted)) | center,
@@ -110,6 +131,9 @@ int UserInfoUI::run() {
                    | bgcolor(toColor(palette.surfacePanel))
                    | color(toColor(palette.textPrimary))
                    | flex;
+            Element composed = dbox({guestBase, MessageOverlay::render(palette)});
+            TransitionBackdrop::update(composed);
+            return composed;
         }
         // Helper: one info row — label left-aligned, value right-aligned.
         auto infoRow = [&](const std::string &label, const std::string &value) -> Element {
@@ -222,7 +246,7 @@ int UserInfoUI::run() {
             }
             body = vbox(std::move(histRows)) | color(toColor(palette.textPrimary)) | frame | flex;
         }
-        return window(
+        Element base = window(
                    text("  " + tr("ui.user_info.title") + "  ") | bold | color(toColor(palette.accentPrimary)),
                    vbox({
                        tabBar,
@@ -233,8 +257,15 @@ int UserInfoUI::run() {
                | color(toColor(palette.borderNormal))
                | bgcolor(toColor(palette.surfaceBg))
                | flex;
+        Element composed = dbox({base, MessageOverlay::render(palette)});
+        TransitionBackdrop::update(composed);
+        return composed;
     });
     auto app = CatchEvent(root, [&](const Event &event) {
+        if (MessageOverlay::handleEvent(event)) {
+            return true;
+        }
+
         if (event == Event::Escape || event == Event::Character('q')) {
             screen.ExitLoopClosure()();
             return true;

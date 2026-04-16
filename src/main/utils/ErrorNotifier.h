@@ -6,11 +6,19 @@
 
 class ErrorNotifier {
 public:
-    using Sink = std::function<void(const std::string &)>;
+    enum class Level { Info, Warning, Error };
+
+    using Sink = std::function<void(Level, const std::string &)>;
 
     static void notify(const std::string &message);
 
     static void notify(const std::string &context, const std::string &message);
+
+    static void notifyInfo(const std::string &message);
+
+    static void notifyWarning(const std::string &message);
+
+    static void notifyWarning(const std::string &context, const std::string &message);
 
     static void notifyException(const std::string &context, const std::exception &ex);
 

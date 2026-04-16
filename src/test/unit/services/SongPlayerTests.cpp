@@ -10,7 +10,7 @@ namespace {
     class SinkGuard {
     public:
         explicit SinkGuard(std::vector<std::string> &messages) {
-            ErrorNotifier::setSink([&messages](const std::string &msg) {
+            ErrorNotifier::setSink([&messages](const ErrorNotifier::Level, const std::string &msg) {
                 messages.push_back(msg);
             });
         }

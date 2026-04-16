@@ -5,8 +5,11 @@
 
 namespace {
     ErrorNotifier::Sink makeDefaultSink() {
-        return [](const std::string &message) {
-            std::cerr << "[Error] " << message << std::endl;
+        return [](const ErrorNotifier::Level level, const std::string &message) {
+            const char *tag = "Info";
+            if (level == ErrorNotifier::Level::Warning) tag = "Warning";
+            if (level == ErrorNotifier::Level::Error) tag = "Error";
+            std::cerr << '[' << tag << "] " << message << std::endl;
         };
     }
 
@@ -17,7 +20,7 @@ namespace {
 }
 
 void ErrorNotifier::notify(const std::string &message) {
-    globalSink()(message);
+    globalSink()(Level::Error, message);
 }
 
 void ErrorNotifier::notify(const std::string &context, const std::string &message) {
@@ -26,6 +29,22 @@ void ErrorNotifier::notify(const std::string &context, const std::string &messag
         return;
     }
     notify(context + ": " + message);
+}
+
+void ErrorNotifier::notifyInfo(const std::string &message) {
+    globalSink()(Level::Info, message);
+}
+
+void ErrorNotifier::notifyWarning(const std::string &message) {
+    globalSink()(Level::Warning, message);
+}
+
+void ErrorNotifier::notifyWarning(const std::string &context, const std::string &message) {
+    if (context.empty()) {
+        notifyWarning(message);
+        return;
+    }
+    notifyWarning(context + ": " + message);
 }
 
 void ErrorNotifier::notifyException(const std::string &context, const std::exception &ex) {

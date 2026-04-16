@@ -36,6 +36,7 @@
   "error.record_file_open_failed": "Cannot open record file",
   "error.proof_file_open_failed": "Cannot open proof file",
   "ui.common.scene_pacing": "Scene pacing",
+  "ui.loading.text": "Loading",
   "ui.common.fps_unit": "fps",
   "ui.common.error": "Error",
   "ui.error.operation_failed": "Operation failed",

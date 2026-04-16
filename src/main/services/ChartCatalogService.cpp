@@ -227,6 +227,24 @@ double singleChartEvaluation(const float difficulty, const float accuracy) {
 std::map<std::string, ChartPlayStats> aggregateStatsFromCatalog(
         const ChartCatalogMap &catalog,
         const std::string &uid) {
+    enum class AchievementTier { None = 0, FC = 1, AP = 2, ULT = 3 };
+
+    auto currentTier = [](const ChartPlayStats &stats) {
+        if (stats.hasULT) return AchievementTier::ULT;
+        if (stats.hasAP) return AchievementTier::AP;
+        if (stats.hasFC) return AchievementTier::FC;
+        return AchievementTier::None;
+    };
+
+    auto applyTier = [](ChartPlayStats &stats, const AchievementTier tier) {
+        stats.hasFC = false;
+        stats.hasAP = false;
+        stats.hasULT = false;
+        if (tier == AchievementTier::FC) stats.hasFC = true;
+        if (tier == AchievementTier::AP) stats.hasAP = true;
+        if (tier == AchievementTier::ULT) stats.hasULT = true;
+    };
+
     std::map<std::string, ChartPlayStats> statsByChart;
     if (uid.empty()) return statsByChart;
 
@@ -273,28 +291,47 @@ std::map<std::string, ChartPlayStats> aggregateStatsFromCatalog(
                 singleChartEvaluation(catalogIt->second.chart.getDifficulty(), accuracy));
         }
 
-        if (fields.size() > noteCountIdx && fields.size() > maxComboIdx) {
+        bool hasNoteCount = false;
+        uint32_t noteCount = 0;
+        if (fields.size() > noteCountIdx) {
             try {
-                const auto maxCombo  = static_cast<uint32_t>(std::stoul(fields.at(maxComboIdx)));
-                const auto noteCount = static_cast<uint32_t>(std::stoul(fields.at(noteCountIdx)));
-                if (noteCount > 0 && maxCombo == noteCount) stats.hasFC = true;
+                noteCount = static_cast<uint32_t>(std::stoul(fields.at(noteCountIdx)));
+                hasNoteCount = (noteCount > 0);
             } catch (...) {}
         }
 
-        if (fields.size() > perfectIdx && fields.size() > noteCountIdx) {
+        bool recordFC = false;
+        if (hasNoteCount && fields.size() > maxComboIdx) {
             try {
-                const auto noteCount    = static_cast<uint32_t>(std::stoul(fields.at(noteCountIdx)));
+                const auto maxCombo = static_cast<uint32_t>(std::stoul(fields.at(maxComboIdx)));
+                recordFC = (maxCombo == noteCount);
+            } catch (...) {}
+        }
+
+        bool recordAP = false;
+        if (hasNoteCount && fields.size() > perfectIdx) {
+            try {
                 const auto perfectCount = static_cast<uint32_t>(std::stoul(fields.at(perfectIdx)));
-                if (noteCount > 0 && perfectCount == noteCount) stats.hasAP = true;
+                recordAP = (perfectCount == noteCount);
             } catch (...) {}
         }
 
+        bool recordULT = false;
         if (fields.size() > lateIdx && fields.size() > earlyIdx) {
             try {
                 const auto early = static_cast<uint32_t>(std::stoul(fields.at(earlyIdx)));
                 const auto late  = static_cast<uint32_t>(std::stoul(fields.at(lateIdx)));
-                if (early + late == 0) stats.hasULT = true;
+                recordULT = (early == 0 && late == 0);
             } catch (...) {}
+        }
+
+        AchievementTier recordTier = AchievementTier::None;
+        if (recordULT) recordTier = AchievementTier::ULT;
+        else if (recordAP) recordTier = AchievementTier::AP;
+        else if (recordFC) recordTier = AchievementTier::FC;
+
+        if (recordTier > currentTier(stats)) {
+            applyTier(stats, recordTier);
         }
     }
 
@@ -348,7 +385,7 @@ std::vector<PlayableNoteConflict> ChartCatalogService::checkChartCompliance(cons
     }
 
     for (const auto &conflict : conflicts) {
-        ErrorNotifier::notify(
+        ErrorNotifier::notifyWarning(
             "ChartCatalogService::checkChartCompliance",
             I18nService::instance().get("warning.chart_compliance_conflict") +
                 " (lane=" + std::to_string(static_cast<unsigned int>(conflict.lane)) +
