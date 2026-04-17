@@ -38,17 +38,17 @@ term4k 是一个基于 C++20 的节奏游戏核心逻辑项目。
 <!-- README_STATS:START -->
 ## 实时代码统计
 
-> 最后更新时间：`2026-04-17 12:45:18`（UTC+8）。
+> 最后更新时间：`2026-04-17 18:45:53`（UTC+8）。
 
 | 指标 | 数值 |
 | --- | ---: |
-| 代码总行数 | `14,857` |
-| 类/结构体定义数量（C++） | `103` |
-| 函数定义数量（C++，启发式） | `494` |
-| 栈对象声明数量（C++，启发式） | `644` |
+| 代码总行数 | `16,758` |
+| 类/结构体定义数量（C++） | `125` |
+| 函数定义数量（C++，启发式） | `530` |
+| 栈对象声明数量（C++，启发式） | `735` |
 | 静态变量声明数量（C++，启发式） | `21` |
 | `new` 堆分配次数（C++，启发式） | `0` |
-| `make_shared`/`make_unique` 调用次数（C++，启发式） | `1` |
+| `make_shared`/`make_unique` 调用次数（C++，启发式） | `5` |
 
 ### 分布图
 
@@ -56,11 +56,11 @@ term4k 是一个基于 C++20 的节奏游戏核心逻辑项目。
 %%{init: {'theme': 'base', 'themeVariables': {'fontFamily': 'Fira Code, JetBrains Mono, Source Code Pro, Cascadia Code, Menlo, Consolas, monospace', 'pieTitleTextColor': '#e5e7eb', 'pieSectionTextColor': '#111827', 'pieOuterStrokeColor': 'transparent', 'pieOuterStrokeWidth': '0px', 'pieStrokeColor': 'transparent', 'pieStrokeWidth': '0px', 'pie1': '#6366f1', 'pie2': '#22d3ee', 'pie3': '#34d399', 'pie4': '#fbbf24', 'pie5': '#fb7185', 'pie6': '#a78bfa'}}}%%
 pie showData
     title Code Distribution by Language (LOC)
-    "C++ (87.1%)" : 12936
-    "Markdown (4.6%)" : 687
-    "JSON (3.1%)" : 458
-    "Shell (2.8%)" : 422
-    "CMake (2.4%)" : 354
+    "C++ (88.6%)" : 14840
+    "Markdown (4.1%)" : 686
+    "JSON (2.7%)" : 458
+    "Shell (2.5%)" : 422
+    "CMake (2.1%)" : 352
 ```
 <!-- README_STATS:END -->
 
