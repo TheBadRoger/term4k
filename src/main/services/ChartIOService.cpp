@@ -59,6 +59,7 @@ constexpr uint8_t ChartIOService::hexVal(char c) noexcept {
 bool ChartIOService::readChart(const char* fileName, ChartBuffer &chartBuffer,
                                uint16_t keyCount, float /*base BPM*/,
                                std::pair<uint8_t, uint8_t> /*base tempo*/
+
     ) {
     const std::string resolvedPath = resolveChartPath(fileName);
     std::ifstream chartFile(resolvedPath, std::ios::in);

@@ -9,6 +9,7 @@
 using namespace test_support;
 
 TEST_CASE (
+
 "RuntimeConfigs provides expected defaults"
 ,
 "[config][RuntimeConfigs]"
@@ -34,6 +35,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "RuntimeConfigs saves and loads per-user settings"
 ,
 "[config][RuntimeConfigs]"

@@ -11,6 +11,7 @@
 using namespace test_support;
 
 TEST_CASE (
+
 "UserService guest/admin login modes update session flags"
 ,
 "[services][UserService]"
@@ -35,6 +36,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "UserService register/login uses DAO-backed credentials"
 ,
 "[services][UserService]"
@@ -58,6 +60,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "UserService blocks reserved usernames and allocates sequential UIDs"
 ,
 "[services][UserService]"
@@ -82,6 +85,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "UserService session transitions follow expected state machine"
 ,
 "[services][UserService]"
@@ -122,6 +126,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "UserService failed login does not clear existing guest or admin session"
 ,
 "[services][UserService]"
@@ -152,6 +157,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "UserService register rejects illegal usernames with readable reason"
 ,
 "[services][UserService]"
@@ -180,6 +186,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "UserService guest uses defaults and admin persists personalized settings"
 ,
 "[services][UserService]"

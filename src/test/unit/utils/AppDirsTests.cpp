@@ -3,6 +3,7 @@
 #include "config/AppDirs.h"
 
 TEST_CASE (
+
 "AppDirs exeDir has trailing slash"
 ,
 "[utils][AppDirs]"
@@ -14,6 +15,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "AppDirs init is safe and yields non-empty directories"
 ,
 "[utils][AppDirs]"

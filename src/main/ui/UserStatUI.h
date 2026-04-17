@@ -6,17 +6,18 @@
 
 #include <functional>
 
-namespace ftxui {
+ namespace ftxui {
 class ScreenInteractive;
 }
 
 namespace ui {
 
-class SettingsUI {
+class UserStatUI {
 public:
     static ftxui::Component component(ftxui::ScreenInteractive &screen,
                                       std::function<void(UIScene)> onRoute);
 };
 
 } // namespace ui
+
 

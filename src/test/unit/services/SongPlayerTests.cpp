@@ -22,6 +22,7 @@ namespace {
 } // namespace
 
 TEST_CASE (
+
 "SongPlayer reports errors when used before initialization"
 ,
 "[services][SongPlayer]"
@@ -39,6 +40,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "SongPlayer rejects missing audio files"
 ,
 "[services][SongPlayer]"
@@ -53,6 +55,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "SongPlayer control methods are safe before load"
 ,
 "[services][SongPlayer]"

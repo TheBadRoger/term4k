@@ -29,6 +29,7 @@ namespace {
 }
 
 TEST_CASE (
+
 "ChartCatalogService loads chart metadata and merges best stats"
 ,
 "[services][ChartCatalogService]"
@@ -81,6 +82,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "ChartCatalogService ignores folders that violate fixed file/id rules"
 ,
 "[services][ChartCatalogService]"
@@ -128,6 +130,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "ChartCatalogService supports all requested sort keys and orders"
 ,
 "[services][ChartCatalogService]"
@@ -163,6 +166,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "ChartCatalogService compliance check reports playable-note conflicts"
 ,
 "[services][ChartCatalogService]"

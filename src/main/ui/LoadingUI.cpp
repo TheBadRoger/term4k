@@ -2,7 +2,7 @@
 
 #include "config/RuntimeConfigs.h"
 #include "services/I18nService.h"
-#include "ui/UIColors.h"
+#include "ui/ThemeAdapter.h"
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>

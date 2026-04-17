@@ -6,7 +6,7 @@
 namespace {
     ErrorNotifier::Sink makeDefaultSink() {
         return [](const ErrorNotifier::Level level, const std::string &message) {
-            const char *tag = "Info";
+            const char* tag = "Info";
             if (level == ErrorNotifier::Level::Warning) tag = "Warning";
             if (level == ErrorNotifier::Level::Error) tag = "Error";
             std::cerr << '[' << tag << "] " << message << std::endl;
@@ -40,7 +40,7 @@ void ErrorNotifier::notifyWarning(const std::string &message) {
 }
 
 void ErrorNotifier::notifyWarning(const std::string &context, const std::string &message) {
-    if (context.empty()) {
+    if (context.empty()){
         notifyWarning(message);
         return;
     }

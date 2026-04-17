@@ -68,8 +68,9 @@ bool UserLoginService::registerUser(const std::string &username,
     }
 
     if (!UserAccountsDAO::addUser(username, password, nextSequentialUID())){
-        if (outErrorMessage != nullptr) *outErrorMessage = I18nService::instance().
-                                        get("error.username_exists_or_write_failed");
+        if (outErrorMessage != nullptr)
+            *outErrorMessage = I18nService::instance().
+                get("error.username_exists_or_write_failed");
         return false;
     }
 

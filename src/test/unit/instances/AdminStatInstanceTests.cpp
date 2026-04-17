@@ -39,6 +39,7 @@ namespace {
 }
 
 TEST_CASE (
+
 "AdminStatInstance exposes per-user stats for verified and all records"
 ,
 "[instances][AdminStatInstance]"
@@ -93,6 +94,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "AdminStatInstance keeps stable order for equal timestamps and provides fallback chart metadata"
 ,
 "[instances][AdminStatInstance]"
@@ -144,6 +146,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "AdminStatInstance keeps maxCombo at 0 for legacy record format"
 ,
 "[instances][AdminStatInstance]"

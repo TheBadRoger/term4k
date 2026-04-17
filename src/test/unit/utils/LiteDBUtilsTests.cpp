@@ -8,6 +8,7 @@
 using namespace test_support;
 
 TEST_CASE (
+
 "LiteDBUtils hex encode/decode roundtrip and invalid input"
 ,
 "[utils][LiteDBUtils]"
@@ -23,6 +24,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "LiteDBUtils hash outputs are deterministic with SHA-256 length"
 ,
 "[utils][LiteDBUtils]"
@@ -42,6 +44,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "LiteDBUtils key setup, xor obfuscation and AES roundtrip"
 ,
 "[utils][LiteDBUtils]"

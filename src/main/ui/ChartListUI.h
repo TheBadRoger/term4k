@@ -12,11 +12,12 @@ class ScreenInteractive;
 
 namespace ui {
 
-class SettingsUI {
+class ChartListUI {
 public:
     static ftxui::Component component(ftxui::ScreenInteractive &screen,
-                                      std::function<void(UIScene)> onRoute);
+                                      const std::function<void(UIScene)> &onRoute);
 };
 
 } // namespace ui
+
 

@@ -11,20 +11,20 @@
 namespace fs = std::filesystem;
 
 namespace {
-std::string devI18nDirIfPresent() {
-    std::error_code ec;
+    std::string devI18nDirIfPresent() {
+        std::error_code ec;
 
-    const std::vector<std::string> candidates = {
-        "src/resources/i18n/",
-        "../src/resources/i18n/",
-    };
+        const std::vector<std::string> candidates = {
+            "src/resources/i18n/",
+            "../src/resources/i18n/",
+        };
 
-    for (const std::string &dir : candidates) {
-        if (fs::exists(dir, ec) && fs::is_directory(dir, ec)) return dir;
-        ec.clear();
+        for (const std::string &dir: candidates){
+            if (fs::exists(dir, ec) && fs::is_directory(dir, ec)) return dir;
+            ec.clear();
+        }
+        return "";
     }
-    return "";
-}
 }
 
 // -- Singleton ---------------------------------------------------------------
@@ -72,7 +72,7 @@ bool I18nService::ensureLocaleLoaded(const std::string &preferredLocale) {
 
     std::vector<std::string> candidates;
     const std::string devDir = devI18nDirIfPresent();
-    if (!devDir.empty()) {
+    if (!devDir.empty()){
         candidates.push_back(devDir + locale + ".json");
         if (locale != "en_US") candidates.push_back(devDir + "en_US.json");
     }
@@ -81,13 +81,13 @@ bool I18nService::ensureLocaleLoaded(const std::string &preferredLocale) {
     candidates.push_back(productionDir + locale + ".json");
     if (locale != "en_US") candidates.push_back(productionDir + "en_US.json");
 
-    if (devDir.empty()) {
+    if (devDir.empty()){
         // Last-resort fallback for ad-hoc local runs without installed resources.
         candidates.push_back("src/resources/i18n/" + locale + ".json");
         if (locale != "en_US") candidates.push_back("src/resources/i18n/en_US.json");
     }
 
-    for (const std::string &path : candidates) {
+    for (const std::string &path: candidates){
         std::error_code ec;
         if (!fs::exists(path, ec) || fs::is_directory(path, ec)) continue;
         if (load(path)) return true;

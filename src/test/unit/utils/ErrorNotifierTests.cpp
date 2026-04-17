@@ -27,6 +27,7 @@ namespace {
 } // namespace
 
 TEST_CASE (
+
 "ErrorNotifier forwards plain and contextual messages"
 ,
 "[utils][ErrorNotifier]"
@@ -46,6 +47,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "ErrorNotifier reports exceptions and unknown failures"
 ,
 "[utils][ErrorNotifier]"

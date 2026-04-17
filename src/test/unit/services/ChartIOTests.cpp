@@ -7,6 +7,7 @@
 using namespace test_support;
 
 TEST_CASE (
+
 "ChartIO hex helpers return lowercase fixed-width strings"
 ,
 "[services][ChartIO]"
@@ -17,6 +18,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "ChartIO parses all note types and applies key bindings"
 ,
 "[services][ChartIO]"
@@ -68,6 +70,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "ChartIO rejects invalid header and clamps negative adjusted timing"
 ,
 "[services][ChartIO]"
@@ -105,6 +108,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "ChartIO accepts absolute paths and fails cleanly on missing files"
 ,
 "[services][ChartIO]"
@@ -127,6 +131,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "ChartIO tolerates malformed lines and only keeps valid notes"
 ,
 "[services][ChartIO]"
@@ -156,6 +161,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "ChartIO rejects null or empty chart path"
 ,
 "[services][ChartIO]"

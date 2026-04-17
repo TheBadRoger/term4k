@@ -43,42 +43,42 @@ enum class ChartDetectionIssue {
 
 // Per-chart play stats for a user (based on verified records).
 struct ChartPlayStats {
-    uint32_t playCount = 0; // Number of plays.
-    uint32_t bestScore = 0; // Best score.
-    float bestAccuracy = 0.0f; // Best accuracy.
-    double bestSingleRating = 0.0; // Best single-chart rating.
-    bool hasFC = false; // Any run reaches full combo.
-    bool hasAP = false; // Any run reaches all perfect.
-    bool hasULT = false; // Any run has no early/late.
+    uint32_t playCount      = 0;     // Number of plays.
+    uint32_t bestScore      = 0;     // Best score.
+    float bestAccuracy      = 0.0f;  // Best accuracy.
+    double bestSingleRating = 0.0;   // Best single-chart rating.
+    bool hasFC              = false; // Any run reaches full combo.
+    bool hasAP              = false; // Any run reaches all perfect.
+    bool hasULT             = false; // Any run has no early/late.
 };
 
 // Detailed failure information for a chart folder scan.
 struct ChartDetectionFailure {
     std::string folderPath; // Failed folder path.
     ChartDetectionIssue issue = ChartDetectionIssue::MissingMeta;
-    std::string metadataID; // Filled only for some issue types.
+    std::string metadataID;     // Filled only for some issue types.
     std::string localizedIssue; // Localized failure text.
 };
 
 // Combined chart catalog entry with metadata and stats.
 struct ChartCatalogEntry {
-    Chart chart; // Parsed chart metadata.
-    std::string folderPath; // Chart folder path.
+    Chart chart;                  // Parsed chart metadata.
+    std::string folderPath;       // Chart folder path.
     std::string metadataFilePath; // meta.json path.
-    std::string chartFilePath; // chart.t4k path.
-    std::string musicFilePath; // music.ogg path.
-    ChartPlayStats stats; // User stats on this chart.
+    std::string chartFilePath;    // chart.t4k path.
+    std::string musicFilePath;    // music.ogg path.
+    ChartPlayStats stats;         // User stats on this chart.
 };
 
 // Structured business-layer representation for one play record.
 struct ChartRecordEntry {
-    std::string uid; // User UID.
-    std::string chartID; // Chart ID.
-    Chart chart; // Linked chart (fallback when metadata is missing).
-    uint32_t score = 0; // Score for this record.
-    float accuracy = 0.0f; // Accuracy for this record.
-    uint32_t timestamp = 0; // Timestamp for this record.
-    uint32_t maxCombo = 0; // Max combo for this record.
+    std::string uid;           // User UID.
+    std::string chartID;       // Chart ID.
+    Chart chart;               // Linked chart (fallback when metadata is missing).
+    uint32_t score     = 0;    // Score for this record.
+    float accuracy     = 0.0f; // Accuracy for this record.
+    uint32_t timestamp = 0;    // Timestamp for this record.
+    uint32_t maxCombo  = 0;    // Max combo for this record.
 };
 
 // Chart catalog map keyed by chart ID.
@@ -94,7 +94,7 @@ struct ChartRecordCollection {
 };
 
 struct PlayableNoteConflict {
-    uint8_t lane = 0;
+    uint8_t lane    = 0;
     uint32_t timeMs = 0;
     std::string existingType;
     std::string incomingType;
@@ -108,18 +108,22 @@ public:
     // When failures is non-null, ignored folders are reported there.
     static ChartCatalogMap loadCatalogForUID(const std::string &chartsRoot,
                                              const std::string &uid,
-                                             std::vector<ChartDetectionFailure> *failures);
+                                             std::vector<ChartDetectionFailure>* failures
+        );
 
     // Same as above but does not collect scan failures.
     static ChartCatalogMap loadCatalogForUID(const std::string &chartsRoot,
-                                             const std::string &uid);
+                                             const std::string &uid
+        );
 
     // Returns sorted key list for UI traversal without copying full entries.
     static std::vector<std::string> sortCatalogKeys(const ChartCatalogMap &items,
                                                     ChartListSortKey key,
-                                                    SortOrder order);
+                                                    SortOrder order
+        );
 
     // Checks only playable notes (tap/hold head/hold tail) for same-lane same-time conflicts.
     static std::vector<PlayableNoteConflict> checkChartCompliance(const std::string &chartFilePath,
-                                                                  uint16_t keyCount);
+                                                                  uint16_t keyCount
+        );
 };

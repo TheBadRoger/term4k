@@ -22,7 +22,7 @@ std::string LiteDBUtils::hexEncode(const std::vector<uint8_t> &data) {
     static constexpr char kHex[] = "0123456789abcdef";
     std::string out;
     out.reserve(data.size() * 2);
-    for (const auto b : data) {
+    for (const auto b: data){
         out.push_back(kHex[b >> 4]);
         out.push_back(kHex[b & 0x0F]);
     }
@@ -43,8 +43,8 @@ std::vector<uint8_t> LiteDBUtils::hexDecode(const std::string &hex) {
         if (c >= 'A' && c <= 'F') return static_cast<uint8_t>(c - 'A' + 10);
         return 0;
     };
-    for (size_t i = 0; i + 1 < hex.size(); i += 2) {
-        if (!isHex(hex[i]) || !isHex(hex[i + 1])) {
+    for (size_t i = 0; i + 1 < hex.size(); i += 2){
+        if (!isHex(hex[i]) || !isHex(hex[i + 1])){
             ErrorNotifier::notifyUnknown("LiteDBUtils::hexDecode");
             return {};
         }
@@ -64,7 +64,7 @@ std::vector<uint8_t> LiteDBUtils::slowHash(const std::vector<uint8_t> &data) {
     // allocating a new vector<uint8_t> on each of the 10 000 rounds.
     std::vector<uint8_t> h = sha256(data);
     std::vector<uint8_t> tmp(SHA256_DIGEST_LENGTH);
-    for (int i = 1; i < SLOW_HASH_ITERATIONS; ++i) {
+    for (int i = 1; i < SLOW_HASH_ITERATIONS; ++i){
         SHA256(h.data(), h.size(), tmp.data());
         h.swap(tmp);
     }

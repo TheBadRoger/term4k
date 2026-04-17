@@ -1,6 +1,5 @@
 #include "catch_amalgamated.hpp"
 
-#include "instances/UserLoginInstance.h"
 #include "instances/UserStatInstance.h"
 #include "services/AuthenticatedUserService.h"
 #include "dao/ProofedRecordsDAO.h"
@@ -27,6 +26,37 @@ namespace {
 }
 
 TEST_CASE (
+
+"UserStatInstance handles register/login/logout for normal users"
+,
+"[instances][UserStatInstance]"
+)
+ {
+    TempDir temp("term4k_user_stat_login");
+    UserAccountsDAO::setDataDir(temp.path().string());
+    LiteDBUtils::setKeyFile((temp.path() / "key.bin").string());
+    REQUIRE(LiteDBUtils::ensureKey());
+
+    UserStatInstance instance;
+    REQUIRE(instance.registerUser("user_a", "pw"));
+    REQUIRE(instance.registerUser("user_b", "pw"));
+
+    REQUIRE(instance.login("user_a", "pw"));
+    REQUIRE(instance.isLoggedIn());
+    REQUIRE(instance.currentUser().has_value());
+    REQUIRE(instance.currentUser()->getUID() == 1000);
+
+    instance.logout();
+    REQUIRE_FALSE(instance.isLoggedIn());
+
+    REQUIRE_FALSE(instance.login("Admin", "pw"));
+
+    AuthenticatedUserService::logout();
+    UserAccountsDAO::setDataDir(".");
+}
+
+TEST_CASE (
+
 "UserStatInstance computes rating and potential from b50"
 ,
 "[instances][UserStatInstance]"
@@ -47,7 +77,7 @@ TEST_CASE (
     LiteDBUtils::setKeyFile((dataRoot / "key.bin").string());
     REQUIRE(LiteDBUtils::ensureKey());
 
-    UserLoginInstance login;
+    UserStatInstance login;
     REQUIRE(login.registerUser("alice", "pw"));
     REQUIRE(login.login("alice", "pw"));
 

@@ -8,7 +8,7 @@
 #include "services/SettingsService.h"
 #include "ui/MessageOverlay.h"
 #include "ui/TransitionBackdrop.h"
-#include "ui/UIColors.h"
+#include "ui/ThemeAdapter.h"
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -60,44 +61,48 @@ bool isBindableCharacter(const ftxui::Event &event, char *out) {
 
 } // namespace
 
-int SettingsUI::run() {
-    auto screen = ftxui::ScreenInteractive::Fullscreen();
-    return run(screen);
-}
 
-int SettingsUI::run(ftxui::ScreenInteractive &screen) {
+ftxui::Component SettingsUI::component(ftxui::ScreenInteractive &screen,
+                                       std::function<void(UIScene)> onRoute) {
     using namespace ftxui;
 
     I18nService::instance().ensureLocaleLoaded(RuntimeConfigs::locale);
     auto tr = [](const std::string &key) { return I18nService::instance().get(key); };
 
-    ThemePalette palette = ThemeAdapter::resolveFromRuntime();
-    SettingsInstance instance;
-    instance.loadFromRuntime();
+    struct SettingsState {
+        ThemePalette palette;
+        SettingsInstance instance;
+        SettingsDraft draft;
+        SettingsDraft committed;
+        std::vector<std::string> themeIds;
+        int tabIndex = 0;
+        int rowIndex = 0;
+        std::string status;
+        bool showKeyEditor = false;
+        int keyEditorLane = 0;
+        bool keyCaptureMode = false;
+        std::string cachedConflictWarning;
+        bool conflictWarningDirty = true;
+    };
 
-    SettingsDraft draft = instance.draft();
-    SettingsDraft committed = draft;
-
-    std::vector<std::string> themeIds = instance.availableThemeIds();
-    if (themeIds.empty()) {
-        themeIds.push_back(draft.getTheme().empty() ? std::string("tomorrow-night") : draft.getTheme());
+    auto state = std::make_shared<SettingsState>();
+    state->palette = ThemeAdapter::resolveFromRuntime();
+    state->instance.loadFromRuntime();
+    state->draft = state->instance.draft();
+    state->committed = state->draft;
+    state->themeIds = state->instance.availableThemeIds();
+    if (state->themeIds.empty()) {
+        state->themeIds.push_back(state->draft.getTheme().empty() ? std::string("tomorrow-night") : state->draft.getTheme());
     }
+    state->status = tr("ui.settings.action.idle");
 
     const std::array<std::string, 2> locales = {"zh_CN", "en_US"};
     const std::array<uint32_t, 8> bufferOptions = {64, 128, 256, 512, 1024, 2048, 4096, 8192};
 
-    int tabIndex = 0;
-    int rowIndex = 0;
-    std::string status = tr("ui.settings.action.idle");
-
-    bool showKeyEditor = false;
-    int keyEditorLane = 0;
-    bool keyCaptureMode = false;
-
     // Helper: compute a summary of duplicate-key conflicts.
     // Returns empty string when no conflicts exist.
-    auto computeConflictWarning = [&]() -> std::string {
-        const std::vector<uint8_t> &bindings = draft.getKeyBindings();
+    auto computeConflictWarning = [state]() -> std::string {
+        const std::vector<uint8_t> &bindings = state->draft.getKeyBindings();
         std::string result;
         for (std::size_t i = 0; i < bindings.size(); ++i) {
             if (bindings[i] == 0) continue;
@@ -127,8 +132,8 @@ int SettingsUI::run(ftxui::ScreenInteractive &screen) {
         return result;
     };
 
-    auto ensureTenKeySlots = [&] {
-        std::vector<uint8_t> bindings = draft.getKeyBindings();
+    auto ensureTenKeySlots = [state] {
+        std::vector<uint8_t> bindings = state->draft.getKeyBindings();
         const std::array<uint8_t, 10> laneDefaults = {'D', 'F', 'H', 'J', 0, 0, 0, 0, 0, 0};
         if (bindings.size() < 10) {
             bindings.resize(10);
@@ -137,95 +142,91 @@ int SettingsUI::run(ftxui::ScreenInteractive &screen) {
             }
         }
         if (bindings.size() > 10) bindings.resize(10);
-        draft.setKeyBindings(bindings);
+        state->draft.setKeyBindings(bindings);
     };
     // Ensure exactly 10 key slots once at startup; not repeated every render frame.
     ensureTenKeySlots();
 
-    // Conflict-warning cache: recomputed only when key bindings change.
-    std::string cachedConflictWarning;
-    bool conflictWarningDirty = true;
-
-    auto saveAndRefresh = [&]() {
-        instance.setDraft(draft);
+    auto saveAndRefresh = [state, tr]() {
+        state->instance.setDraft(state->draft);
         const auto user = AuthenticatedUserService::currentUser();
         const std::string username = user.has_value() ? user->getUsername() : "local";
-        if (instance.saveDraftForUser(username)) {
-            committed = draft;
-            SettingsService::applyToRuntime(committed);
+        if (state->instance.saveDraftForUser(username)) {
+            state->committed = state->draft;
+            SettingsService::applyToRuntime(state->committed);
             I18nService::instance().ensureLocaleLoaded(RuntimeConfigs::locale);
-            palette = ThemeAdapter::resolveFromRuntime();
-            status = tr("ui.settings.action.saved");
+            state->palette = ThemeAdapter::resolveFromRuntime();
+            state->status = tr("ui.settings.action.saved");
             return true;
         }
-        status = tr("ui.settings.action.save_failed");
+        state->status = tr("ui.settings.action.save_failed");
         return false;
     };
 
-    auto clampRow = [&] {
+    auto clampRow = [state] {
         const int maxRowsByTab[3] = {2, 3, 8};
-        rowIndex = std::clamp(rowIndex, 0, maxRowsByTab[tabIndex] - 1);
+        state->rowIndex = std::clamp(state->rowIndex, 0, maxRowsByTab[state->tabIndex] - 1);
     };
 
-    auto cycleTheme = [&](const int delta) {
-        auto it = std::find(themeIds.begin(), themeIds.end(), draft.getTheme());
-        int index = (it == themeIds.end()) ? 0 : static_cast<int>(std::distance(themeIds.begin(), it));
-        index = (index + delta + static_cast<int>(themeIds.size())) % static_cast<int>(themeIds.size());
-        draft.setTheme(themeIds[static_cast<std::size_t>(index)]);
+    auto cycleTheme = [state](const int delta) {
+        auto it = std::find(state->themeIds.begin(), state->themeIds.end(), state->draft.getTheme());
+        int index = (it == state->themeIds.end()) ? 0 : static_cast<int>(std::distance(state->themeIds.begin(), it));
+        index = (index + delta + static_cast<int>(state->themeIds.size())) % static_cast<int>(state->themeIds.size());
+        state->draft.setTheme(state->themeIds[static_cast<std::size_t>(index)]);
     };
 
-    auto cycleLocale = [&](const int delta) {
+    auto cycleLocale = [state, locales](const int delta) {
         int index = 0;
         for (std::size_t i = 0; i < locales.size(); ++i) {
-            if (draft.getLocale() == locales[i]) index = static_cast<int>(i);
+            if (state->draft.getLocale() == locales[i]) index = static_cast<int>(i);
         }
         index = (index + delta + static_cast<int>(locales.size())) % static_cast<int>(locales.size());
-        draft.setLocale(locales[static_cast<std::size_t>(index)]);
+        state->draft.setLocale(locales[static_cast<std::size_t>(index)]);
     };
 
-    auto cycleBuffer = [&](const int delta) {
+    auto cycleBuffer = [state, bufferOptions](const int delta) {
         int index = 0;
         for (std::size_t i = 0; i < bufferOptions.size(); ++i) {
-            if (draft.getAudioBufferSize() == bufferOptions[i]) index = static_cast<int>(i);
+            if (state->draft.getAudioBufferSize() == bufferOptions[i]) index = static_cast<int>(i);
         }
         index = (index + delta + static_cast<int>(bufferOptions.size())) % static_cast<int>(bufferOptions.size());
-        draft.setAudioBufferSize(bufferOptions[static_cast<std::size_t>(index)]);
+        state->draft.setAudioBufferSize(bufferOptions[static_cast<std::size_t>(index)]);
     };
 
-    auto modifyCurrentField = [&](const int delta, const bool fineAdjust) {
-        if (tabIndex == 0) {
-            if (rowIndex == 0) cycleTheme(delta);
-            if (rowIndex == 1) cycleLocale(delta);
+    auto modifyCurrentField = [state, cycleTheme, cycleLocale, cycleBuffer](const int delta, const bool fineAdjust) {
+        if (state->tabIndex == 0) {
+            if (state->rowIndex == 0) cycleTheme(delta);
+            if (state->rowIndex == 1) cycleLocale(delta);
             return;
         }
 
-        if (tabIndex == 1) {
+        if (state->tabIndex == 1) {
             const float volumeStep = fineAdjust ? 0.01f : 0.05f;
-            if (rowIndex == 0) draft.setMusicVolume(std::clamp(draft.getMusicVolume() + volumeStep * static_cast<float>(delta), 0.0f, 1.0f));
-            if (rowIndex == 1) draft.setHitSoundVolume(std::clamp(draft.getHitSoundVolume() + volumeStep * static_cast<float>(delta), 0.0f, 1.0f));
-            if (rowIndex == 2) cycleBuffer(delta);
+            if (state->rowIndex == 0) state->draft.setMusicVolume(std::clamp(state->draft.getMusicVolume() + volumeStep * static_cast<float>(delta), 0.0f, 1.0f));
+            if (state->rowIndex == 1) state->draft.setHitSoundVolume(std::clamp(state->draft.getHitSoundVolume() + volumeStep * static_cast<float>(delta), 0.0f, 1.0f));
+            if (state->rowIndex == 2) cycleBuffer(delta);
             return;
         }
 
-        if (rowIndex == 0) draft.setShowEarlyLate(!draft.isShowEarlyLate());
-        if (rowIndex == 1) draft.setShowAPIndicator(!draft.isShowAPIndicator());
-        if (rowIndex == 2) draft.setShowFCIndicator(!draft.isShowFCIndicator());
+        if (state->rowIndex == 0) state->draft.setShowEarlyLate(!state->draft.isShowEarlyLate());
+        if (state->rowIndex == 1) state->draft.setShowAPIndicator(!state->draft.isShowAPIndicator());
+        if (state->rowIndex == 2) state->draft.setShowFCIndicator(!state->draft.isShowFCIndicator());
         const int offsetStep = fineAdjust ? 1 : 5;
-        if (rowIndex == 3) draft.setChartOffsetMs(draft.getChartOffsetMs() + delta * offsetStep);
-        if (rowIndex == 4) draft.setChartDisplayOffsetMs(draft.getChartDisplayOffsetMs() + delta * offsetStep);
-        if (rowIndex == 5) {
+        if (state->rowIndex == 3) state->draft.setChartOffsetMs(state->draft.getChartOffsetMs() + delta * offsetStep);
+        if (state->rowIndex == 4) state->draft.setChartDisplayOffsetMs(state->draft.getChartDisplayOffsetMs() + delta * offsetStep);
+        if (state->rowIndex == 5) {
             const int preloadStep = fineAdjust ? 10 : 100;
-            const int preload = static_cast<int>(draft.getChartPreloadMs()) + delta * preloadStep;
-            draft.setChartPreloadMs(static_cast<uint32_t>(std::clamp(preload, 0, 60000)));
+            const int preload = static_cast<int>(state->draft.getChartPreloadMs()) + delta * preloadStep;
+            state->draft.setChartPreloadMs(static_cast<uint32_t>(std::clamp(preload, 0, 60000)));
         }
-        if (rowIndex == 6) {
-            draft.setChartEndTimingMode(draft.getChartEndTimingMode() == ChartEndTimingMode::AfterAudioEnd
+        if (state->rowIndex == 6) {
+            state->draft.setChartEndTimingMode(state->draft.getChartEndTimingMode() == ChartEndTimingMode::AfterAudioEnd
                                             ? ChartEndTimingMode::AfterChartEnd
                                             : ChartEndTimingMode::AfterAudioEnd);
         }
     };
 
-    auto row = [&](const std::string &label, const std::string &value, const bool selected) -> Element {
+    auto row = [state](const std::string &label, const std::string &value, const bool selected) -> Element {
         if (selected) {
             // When highlighted: apply bold + high-contrast fg + accent bg to the whole row,
             // without per-element colour overrides so every part stays readable.
@@ -233,17 +234,17 @@ int SettingsUI::run(ftxui::ScreenInteractive &screen) {
                 text(label),
                 filler(),
                 text(value) | bold,
-            }) | bold | color(highContrastOn(palette.accentPrimary)) | bgcolor(toColor(palette.accentPrimary));
+            }) | bold | color(highContrastOn(state->palette.accentPrimary)) | bgcolor(toColor(state->palette.accentPrimary));
         }
         return hbox({
-            text(label) | color(toColor(palette.textMuted)),
+            text(label) | color(toColor(state->palette.textMuted)),
             filler(),
-            text(value) | bold | color(toColor(palette.textPrimary)),
+            text(value) | bold | color(toColor(state->palette.textPrimary)),
         });
     };
 
-    auto root = Renderer([&] {
-        const bool dirty = (draft != committed);
+    auto root = Renderer([state, tr, row, computeConflictWarning] {
+        const bool dirty = (state->draft != state->committed);
         const std::array<std::string, 3> tabs = {
             tr("ui.settings.tab.appearance"),
             tr("ui.settings.tab.audio"),
@@ -251,41 +252,41 @@ int SettingsUI::run(ftxui::ScreenInteractive &screen) {
         };
 
         // ensureTenKeySlots is called once at startup; not repeated every frame.
-        const std::vector<uint8_t> &bindings = draft.getKeyBindings();
+        const std::vector<uint8_t> &bindings = state->draft.getKeyBindings();
 
         Elements tabElements;
         for (int i = 0; i < static_cast<int>(tabs.size()); ++i) {
             Element t = text(" " + tabs[static_cast<std::size_t>(i)] + " ") | bold;
-            if (i == tabIndex) {
-                t = t | color(highContrastOn(palette.accentPrimary)) | bgcolor(toColor(palette.accentPrimary));
+            if (i == state->tabIndex) {
+                t = t | color(highContrastOn(state->palette.accentPrimary)) | bgcolor(toColor(state->palette.accentPrimary));
             } else {
-                t = t | color(toColor(palette.textMuted));
+                t = t | color(toColor(state->palette.textMuted));
             }
             tabElements.push_back(t);
             tabElements.push_back(text(" "));
         }
 
         Elements logicalRows;
-        if (tabIndex == 0) {
-            logicalRows.push_back(row(tr("ui.settings.field.theme"), draft.getTheme(), rowIndex == 0));
-            logicalRows.push_back(row(tr("ui.settings.field.locale"), draft.getLocale(), rowIndex == 1));
-        } else if (tabIndex == 1) {
-            logicalRows.push_back(row(tr("ui.settings.field.music_volume"), std::to_string(static_cast<int>(draft.getMusicVolume() * 100.0f)) + "%", rowIndex == 0));
-            logicalRows.push_back(row(tr("ui.settings.field.hit_volume"), std::to_string(static_cast<int>(draft.getHitSoundVolume() * 100.0f)) + "%", rowIndex == 1));
-            logicalRows.push_back(row(tr("ui.settings.field.buffer_size"), std::to_string(draft.getAudioBufferSize()), rowIndex == 2));
+        if (state->tabIndex == 0) {
+            logicalRows.push_back(row(tr("ui.settings.field.theme"), state->draft.getTheme(), state->rowIndex == 0));
+            logicalRows.push_back(row(tr("ui.settings.field.locale"), state->draft.getLocale(), state->rowIndex == 1));
+        } else if (state->tabIndex == 1) {
+            logicalRows.push_back(row(tr("ui.settings.field.music_volume"), std::to_string(static_cast<int>(state->draft.getMusicVolume() * 100.0f)) + "%", state->rowIndex == 0));
+            logicalRows.push_back(row(tr("ui.settings.field.hit_volume"), std::to_string(static_cast<int>(state->draft.getHitSoundVolume() * 100.0f)) + "%", state->rowIndex == 1));
+            logicalRows.push_back(row(tr("ui.settings.field.buffer_size"), std::to_string(state->draft.getAudioBufferSize()), state->rowIndex == 2));
         } else {
-            logicalRows.push_back(row(tr("ui.settings.field.show_early_late"), boolLabel(draft.isShowEarlyLate(), tr("ui.settings.value.on"), tr("ui.settings.value.off")), rowIndex == 0));
-            logicalRows.push_back(row(tr("ui.settings.field.show_ap"), boolLabel(draft.isShowAPIndicator(), tr("ui.settings.value.on"), tr("ui.settings.value.off")), rowIndex == 1));
-            logicalRows.push_back(row(tr("ui.settings.field.show_fc"), boolLabel(draft.isShowFCIndicator(), tr("ui.settings.value.on"), tr("ui.settings.value.off")), rowIndex == 2));
-            logicalRows.push_back(row(tr("ui.settings.field.chart_offset"), std::to_string(draft.getChartOffsetMs()), rowIndex == 3));
-            logicalRows.push_back(row(tr("ui.settings.field.chart_display_offset"), std::to_string(draft.getChartDisplayOffsetMs()), rowIndex == 4));
-            logicalRows.push_back(row(tr("ui.settings.field.chart_preload"), std::to_string(draft.getChartPreloadMs()), rowIndex == 5));
+            logicalRows.push_back(row(tr("ui.settings.field.show_early_late"), boolLabel(state->draft.isShowEarlyLate(), tr("ui.settings.value.on"), tr("ui.settings.value.off")), state->rowIndex == 0));
+            logicalRows.push_back(row(tr("ui.settings.field.show_ap"), boolLabel(state->draft.isShowAPIndicator(), tr("ui.settings.value.on"), tr("ui.settings.value.off")), state->rowIndex == 1));
+            logicalRows.push_back(row(tr("ui.settings.field.show_fc"), boolLabel(state->draft.isShowFCIndicator(), tr("ui.settings.value.on"), tr("ui.settings.value.off")), state->rowIndex == 2));
+            logicalRows.push_back(row(tr("ui.settings.field.chart_offset"), std::to_string(state->draft.getChartOffsetMs()), state->rowIndex == 3));
+            logicalRows.push_back(row(tr("ui.settings.field.chart_display_offset"), std::to_string(state->draft.getChartDisplayOffsetMs()), state->rowIndex == 4));
+            logicalRows.push_back(row(tr("ui.settings.field.chart_preload"), std::to_string(state->draft.getChartPreloadMs()), state->rowIndex == 5));
             logicalRows.push_back(row(tr("ui.settings.field.end_timing"),
-                                     draft.getChartEndTimingMode() == ChartEndTimingMode::AfterAudioEnd
+                                     state->draft.getChartEndTimingMode() == ChartEndTimingMode::AfterAudioEnd
                                          ? tr("ui.settings.value.after_audio_end")
                                          : tr("ui.settings.value.after_chart_end"),
-                                     rowIndex == 6));
-            logicalRows.push_back(row(tr("ui.settings.field.key_bindings"), bindingSummary(bindings), rowIndex == 7));
+                                     state->rowIndex == 6));
+            logicalRows.push_back(row(tr("ui.settings.field.key_bindings"), bindingSummary(bindings), state->rowIndex == 7));
         }
 
         Elements rowsWithGap;
@@ -296,24 +297,24 @@ int SettingsUI::run(ftxui::ScreenInteractive &screen) {
 
         Element panel = vbox(std::move(rowsWithGap)) |
                         borderRounded |
-                        color(toColor(palette.borderNormal)) |
-                        bgcolor(toColor(palette.surfacePanel));
+                        color(toColor(state->palette.borderNormal)) |
+                        bgcolor(toColor(state->palette.surfacePanel));
 
         Element top = hbox({
-            text(tr("ui.settings.title")) | bold | color(toColor(palette.accentPrimary)),
+            text(tr("ui.settings.title")) | bold | color(toColor(state->palette.accentPrimary)),
             filler(),
-            text(dirty ? tr("ui.settings.unsaved") : "") | color(toColor(palette.textMuted)),
+            text(dirty ? tr("ui.settings.unsaved") : "") | color(toColor(state->palette.textMuted)),
             text("  "),
-            text(tr("ui.settings.hint")) | color(toColor(palette.textMuted)),
+            text(tr("ui.settings.hint")) | color(toColor(state->palette.textMuted)),
         });
 
         Element body = vbox({separator(), panel | flex});
 
-        if (showKeyEditor) {
+        if (state->showKeyEditor) {
             // Recompute conflict warning only when bindings changed (dirty flag).
-            if (conflictWarningDirty) {
-                cachedConflictWarning = computeConflictWarning();
-                conflictWarningDirty = false;
+            if (state->conflictWarningDirty) {
+                state->cachedConflictWarning = computeConflictWarning();
+                state->conflictWarningDirty = false;
             }
 
             Elements keyRows;
@@ -321,35 +322,39 @@ int SettingsUI::run(ftxui::ScreenInteractive &screen) {
                 const std::string laneLabel = tr("ui.settings.field.key_slot") + std::to_string(lane);
                 const std::string value(1, keyCodeToDisplay(bindings[static_cast<std::size_t>(lane)]));
                 Element r = hbox({text(laneLabel), filler(), text(value) | bold});
-                if (lane == keyEditorLane) {
-                    r = r | color(highContrastOn(palette.accentPrimary)) | bgcolor(toColor(palette.accentPrimary));
+                if (lane == state->keyEditorLane) {
+                    r = r | color(highContrastOn(state->palette.accentPrimary)) | bgcolor(toColor(state->palette.accentPrimary));
                 } else {
-                    r = r | color(toColor(palette.textPrimary));
+                    r = r | color(toColor(state->palette.textPrimary));
                 }
                 keyRows.push_back(r);
                 if (lane < 9) keyRows.push_back(text(""));
             }
 
-            Element editorBody = vbox({
-                text(tr("ui.settings.key_editor.title")) | bold | color(toColor(palette.accentPrimary)),
-                text(keyCaptureMode ? tr("ui.settings.key_editor.capturing") : tr("ui.settings.key_editor.ready")) |
-                    color(toColor(palette.textMuted)),
-                cachedConflictWarning.empty()
-                    ? text("")
-                    : text(tr("ui.settings.key_editor.conflict_prefix") + cachedConflictWarning) | color(Color::Red),
-                separator(),
-                vbox(std::move(keyRows)),
-            });
+            Elements editorRows = {
+                text(tr("ui.settings.key_editor.title")) | bold | color(toColor(state->palette.accentPrimary)),
+                text(state->keyCaptureMode ? tr("ui.settings.key_editor.capturing") : tr("ui.settings.key_editor.ready")) |
+                    color(toColor(state->palette.textMuted)),
+            };
+            if (!state->cachedConflictWarning.empty()) {
+                editorRows.push_back(
+                    text(tr("ui.settings.key_editor.conflict_prefix") + state->cachedConflictWarning) | color(Color::Red)
+                );
+            }
+            editorRows.push_back(separator());
+            editorRows.push_back(vbox(std::move(keyRows)));
+
+            Element editorBody = vbox(std::move(editorRows));
 
             Element popup = window(text(" " + tr("ui.settings.field.key_bindings") + " "), editorBody) |
-                            color(toColor(palette.accentPrimary)) |
-                            bgcolor(toColor(palette.surfacePanel)) |
+                            color(toColor(state->palette.accentPrimary)) |
+                            bgcolor(toColor(state->palette.surfacePanel)) |
                             size(WIDTH, EQUAL, 56);
 
             body = dbox({body, hbox({filler(), popup, filler()}) | vcenter | flex});
         }
 
-        Element bottom = text(status) | color(toColor(palette.textMuted));
+        Element bottom = text(state->status) | color(toColor(state->palette.textMuted));
 
         Element base = vbox({
                    top,
@@ -359,91 +364,96 @@ int SettingsUI::run(ftxui::ScreenInteractive &screen) {
                    separator(),
                    bottom,
                }) |
-               bgcolor(toColor(palette.surfaceBg)) |
-               color(toColor(palette.textPrimary)) |
+               bgcolor(toColor(state->palette.surfaceBg)) |
+               color(toColor(state->palette.textPrimary)) |
                flex;
 
-        Element composed = dbox({base, MessageOverlay::render(palette)});
+        Element composed = dbox({base, MessageOverlay::render(state->palette)});
         TransitionBackdrop::update(composed);
         return composed;
     });
 
-    auto app = CatchEvent(root, [&](const Event &event) {
+    auto app = CatchEvent(root, [state,
+                                 saveAndRefresh,
+                                 clampRow,
+                                 modifyCurrentField,
+                                 onRoute = std::move(onRoute),
+                                 tr](const Event &event) {
         if (MessageOverlay::handleEvent(event)) {
             return true;
         }
 
-        if (showKeyEditor) {
-            if (keyCaptureMode) {
+        if (state->showKeyEditor) {
+            if (state->keyCaptureMode) {
                 char captured = 0;
                 if (isBindableCharacter(event, &captured)) {
-                    std::vector<uint8_t> bindings = draft.getKeyBindings();
-                    bindings[static_cast<std::size_t>(keyEditorLane)] = static_cast<uint8_t>(captured);
-                    draft.setKeyBindings(bindings);
-                    keyCaptureMode = false;
-                    conflictWarningDirty = true;
+                    std::vector<uint8_t> bindings = state->draft.getKeyBindings();
+                    bindings[static_cast<std::size_t>(state->keyEditorLane)] = static_cast<uint8_t>(captured);
+                    state->draft.setKeyBindings(bindings);
+                    state->keyCaptureMode = false;
+                    state->conflictWarningDirty = true;
                     return true;
                 }
                 if (event == Event::Backspace) {
-                    std::vector<uint8_t> bindings = draft.getKeyBindings();
-                    bindings[static_cast<std::size_t>(keyEditorLane)] = 0;
-                    draft.setKeyBindings(bindings);
-                    keyCaptureMode = false;
-                    conflictWarningDirty = true;
+                    std::vector<uint8_t> bindings = state->draft.getKeyBindings();
+                    bindings[static_cast<std::size_t>(state->keyEditorLane)] = 0;
+                    state->draft.setKeyBindings(bindings);
+                    state->keyCaptureMode = false;
+                    state->conflictWarningDirty = true;
                     return true;
                 }
                 if (event == Event::Escape) {
-                    keyCaptureMode = false;
+                    state->keyCaptureMode = false;
                     return true;
                 }
                 return true;
             }
 
             if (event == Event::Escape) {
-                showKeyEditor = false;
+                state->showKeyEditor = false;
                 return true;
             }
             if (event == Event::ArrowUp || event == Event::Character('k')) {
-                keyEditorLane = (keyEditorLane + 9) % 10;
+                state->keyEditorLane = (state->keyEditorLane + 9) % 10;
                 return true;
             }
             if (event == Event::ArrowDown || event == Event::Character('j')) {
-                keyEditorLane = (keyEditorLane + 1) % 10;
+                state->keyEditorLane = (state->keyEditorLane + 1) % 10;
                 return true;
             }
             if (event == Event::Return) {
-                keyCaptureMode = true;
+                state->keyCaptureMode = true;
                 return true;
             }
             if (event == Event::Character('s') || event == Event::Character('S')) {
                 saveAndRefresh();
-                showKeyEditor = false;
+                state->showKeyEditor = false;
                 return true;
             }
             return true;
         }
 
         if (event == Event::Escape || event == Event::Character('q')) {
-            screen.ExitLoopClosure()();
+            onRoute(UIScene::StartMenu);
             return true;
         }
         if (event == Event::Tab || event == Event::Character('l') || event == Event::ArrowRight) {
-            tabIndex = (tabIndex + 1) % 3;
+            state->tabIndex = (state->tabIndex + 1) % 3;
             clampRow();
             return true;
         }
         if (event == Event::Character('h') || event == Event::ArrowLeft) {
-            tabIndex = (tabIndex + 2) % 3;
+            state->tabIndex = (state->tabIndex + 2) % 3;
             clampRow();
             return true;
         }
         if (event == Event::ArrowUp || event == Event::Character('k')) {
-            --rowIndex;
+            --state->rowIndex;
             clampRow();
             return true;
         }
         if (event == Event::ArrowDown || event == Event::Character('j')) {
-            ++rowIndex;
+            ++state->rowIndex;
             clampRow();
             return true;
         }
@@ -464,24 +474,24 @@ int SettingsUI::run(ftxui::ScreenInteractive &screen) {
             return true;
         }
         if (event == Event::Return) {
-            if (tabIndex == 0 && rowIndex == 0) status = tr("ui.settings.desc.theme");
-            if (tabIndex == 0 && rowIndex == 1) status = tr("ui.settings.desc.locale");
-            if (tabIndex == 1 && rowIndex == 0) status = tr("ui.settings.desc.music_volume");
-            if (tabIndex == 1 && rowIndex == 1) status = tr("ui.settings.desc.hit_volume");
-            if (tabIndex == 1 && rowIndex == 2) status = tr("ui.settings.desc.buffer_size");
-            if (tabIndex == 2 && rowIndex == 0) status = tr("ui.settings.desc.show_early_late");
-            if (tabIndex == 2 && rowIndex == 1) status = tr("ui.settings.desc.show_ap");
-            if (tabIndex == 2 && rowIndex == 2) status = tr("ui.settings.desc.show_fc");
-            if (tabIndex == 2 && rowIndex == 3) status = tr("ui.settings.desc.chart_offset");
-            if (tabIndex == 2 && rowIndex == 4) status = tr("ui.settings.desc.chart_display_offset");
-            if (tabIndex == 2 && rowIndex == 5) status = tr("ui.settings.desc.chart_preload");
-            if (tabIndex == 2 && rowIndex == 6) status = tr("ui.settings.desc.end_timing");
-            if (tabIndex == 2 && rowIndex == 7) status = tr("ui.settings.desc.key_bindings");
+            if (state->tabIndex == 0 && state->rowIndex == 0) state->status = tr("ui.settings.desc.theme");
+            if (state->tabIndex == 0 && state->rowIndex == 1) state->status = tr("ui.settings.desc.locale");
+            if (state->tabIndex == 1 && state->rowIndex == 0) state->status = tr("ui.settings.desc.music_volume");
+            if (state->tabIndex == 1 && state->rowIndex == 1) state->status = tr("ui.settings.desc.hit_volume");
+            if (state->tabIndex == 1 && state->rowIndex == 2) state->status = tr("ui.settings.desc.buffer_size");
+            if (state->tabIndex == 2 && state->rowIndex == 0) state->status = tr("ui.settings.desc.show_early_late");
+            if (state->tabIndex == 2 && state->rowIndex == 1) state->status = tr("ui.settings.desc.show_ap");
+            if (state->tabIndex == 2 && state->rowIndex == 2) state->status = tr("ui.settings.desc.show_fc");
+            if (state->tabIndex == 2 && state->rowIndex == 3) state->status = tr("ui.settings.desc.chart_offset");
+            if (state->tabIndex == 2 && state->rowIndex == 4) state->status = tr("ui.settings.desc.chart_display_offset");
+            if (state->tabIndex == 2 && state->rowIndex == 5) state->status = tr("ui.settings.desc.chart_preload");
+            if (state->tabIndex == 2 && state->rowIndex == 6) state->status = tr("ui.settings.desc.end_timing");
+            if (state->tabIndex == 2 && state->rowIndex == 7) state->status = tr("ui.settings.desc.key_bindings");
 
-            if (tabIndex == 2 && rowIndex == 7) {
-                showKeyEditor = true;
-                keyEditorLane = 0;
-                keyCaptureMode = false;
+            if (state->tabIndex == 2 && state->rowIndex == 7) {
+                state->showKeyEditor = true;
+                state->keyEditorLane = 0;
+                state->keyCaptureMode = false;
                 return true;
             }
             return true;
@@ -493,8 +503,7 @@ int SettingsUI::run(ftxui::ScreenInteractive &screen) {
         return false;
     });
 
-    screen.Loop(app);
-    return 0;
+    return app;
 }
 
 } // namespace ui

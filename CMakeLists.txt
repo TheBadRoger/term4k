@@ -88,7 +88,6 @@ set(TERM4K_CORE_SOURCES
         src/main/services/SettingsService.cpp
         src/main/services/ThemePresetService.cpp
         src/main/instances/ChartListInstance.cpp
-        src/main/instances/UserLoginInstance.cpp
         src/main/instances/UserStatInstance.cpp
         src/main/instances/AdminStatInstance.cpp
         src/main/instances/GameplayInstance.cpp
@@ -142,13 +141,15 @@ if (TERM4K_ENABLE_TUI)
     endif ()
 
     target_sources(term4k PRIVATE
-            src/main/ui/HomePageUI.cpp
+            src/main/ui/StartMenuUI.cpp
             src/main/ui/LoadingUI.cpp
             src/main/ui/MessageOverlay.cpp
             src/main/ui/TransitionBackdrop.cpp
-            src/main/ui/ChartSelectUI.cpp
+            src/main/ui/ChartListUI.cpp
             src/main/ui/SettingsUI.cpp
-            src/main/ui/UserInfoUI.cpp
+            src/main/ui/UserStatUI.cpp
+            src/main/ui/UIColors.cpp
+            src/main/ui/UIBus.cpp
     )
 
     target_compile_definitions(term4k PRIVATE TERM4K_ENABLE_TUI=1)
@@ -189,13 +190,13 @@ if (TERM4K_BUILD_TESTS)
             src/test/unit/services/GameplayRecordServiceTests.cpp
             src/test/unit/services/ThemePresetServiceTests.cpp
             src/test/unit/instances/ChartListInstanceTests.cpp
-            src/test/unit/instances/UserLoginInstanceTests.cpp
             src/test/unit/instances/UserStatInstanceTests.cpp
             src/test/unit/instances/AdminStatInstanceTests.cpp
             src/test/unit/instances/GameplayInstanceTests.cpp
             src/test/unit/instances/GameplaySettlementInstanceTests.cpp
             src/test/unit/instances/SettingsInstanceTests.cpp
             src/test/unit/ui/ThemeAdapterTests.cpp
+            src/test/unit/ui/UIRouteContractsTests.cpp
     )
 
     target_include_directories(term4k_tests PRIVATE src/test)
@@ -247,7 +248,6 @@ set(TERM4K_PUBLIC_HEADERS
         src/main/services/SettingsService.h
         src/main/services/ThemePresetService.h
         src/main/instances/ChartListInstance.h
-        src/main/instances/UserLoginInstance.h
         src/main/instances/UserStatInstance.h
         src/main/instances/AdminStatInstance.h
         src/main/instances/GameplayInstance.h

@@ -1,6 +1,6 @@
 #include "ui/MessageOverlay.h"
 
-#include "ui/UIColors.h"
+#include "ui/ThemeAdapter.h"
 
 #include <deque>
 #include <mutex>

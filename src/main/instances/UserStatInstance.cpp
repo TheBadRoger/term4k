@@ -1,9 +1,42 @@
 #include "UserStatInstance.h"
 
 #include "services/AuthenticatedUserService.h"
+#include "services/UserLoginService.h"
 #include "utils/RatingUtils.h"
 
 #include <algorithm>
+
+bool UserStatInstance::registerUser(const std::string &username,
+                                    const std::string &password,
+                                    std::string *outErrorMessage) {
+    return UserLoginService::registerUser(username, password, 0, outErrorMessage);
+}
+
+bool UserStatInstance::login(const std::string &username, const std::string &password) {
+    if (!UserLoginService::login(username, password)) return false;
+    if (!AuthenticatedUserService::syncFromUserLoginService()) return false;
+
+    if (AuthenticatedUserService::isGuestUser()) {
+        UserLoginService::logout();
+        AuthenticatedUserService::logout();
+        return false;
+    }
+
+    return true;
+}
+
+void UserStatInstance::logout() {
+    UserLoginService::logout();
+    AuthenticatedUserService::logout();
+}
+
+bool UserStatInstance::isLoggedIn() const {
+    return AuthenticatedUserService::hasLoggedInUser();
+}
+
+std::optional<User> UserStatInstance::currentUser() const {
+    return AuthenticatedUserService::currentUser();
+}
 
 bool UserStatInstance::refresh(const std::string &chartsRoot) {
     userRecords      = AuthenticatedUserService::loadCurrentUserVerifiedRecords(chartsRoot);

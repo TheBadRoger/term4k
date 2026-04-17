@@ -24,6 +24,7 @@ namespace {
 }
 
 TEST_CASE (
+
 "ChartListInstance refresh and sort orchestrate service behavior"
 ,
 "[instances][ChartListInstance]"
@@ -61,6 +62,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "ChartListInstance exposes detection failures for invalid chart folders"
 ,
 "[instances][ChartListInstance]"
@@ -86,6 +88,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "ChartListInstance supports case-insensitive prefix search by selectable mode"
 ,
 "[instances][ChartListInstance]"

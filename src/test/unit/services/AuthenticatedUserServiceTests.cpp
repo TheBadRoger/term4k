@@ -26,6 +26,7 @@ namespace {
 }
 
 TEST_CASE (
+
 "AuthenticatedUserService returns current user's verified records in reverse time order"
 ,
 "[services][AutheticatedUserService]"
@@ -72,6 +73,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "AuthenticatedUserService keeps stable order for equal timestamps and falls back missing chart metadata"
 ,
 "[services][AutheticatedUserService]"
@@ -118,6 +120,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "AuthenticatedUserService keeps maxCombo at 0 for legacy record format"
 ,
 "[services][AutheticatedUserService]"

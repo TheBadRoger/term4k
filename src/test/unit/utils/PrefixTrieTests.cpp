@@ -3,6 +3,7 @@
 #include "utils/PrefixTrie.h"
 
 TEST_CASE (
+
 "PrefixTrie supports case-insensitive prefix search"
 ,
 "[utils][PrefixTrie]"
@@ -19,6 +20,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "PrefixTrie removes duplicate indices and clears correctly"
 ,
 "[utils][PrefixTrie]"
@@ -37,6 +39,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "PrefixTrie handles empty or missing prefixes"
 ,
 "[utils][PrefixTrie]"
@@ -51,6 +54,7 @@ TEST_CASE (
 }
 
 TEST_CASE (
+
 "PrefixTrie incremental search reuses cursor across extend and backtrack"
 ,
 "[utils][PrefixTrie]"
