@@ -15,6 +15,7 @@
 
 #include <cassert>
 #include <functional>
+#include <optional>
 
 namespace ui {
 namespace {
@@ -54,56 +55,43 @@ ftxui::Component buildSceneComponent(const UIScene scene,
 int UIBus::run() {
     auto screen = ftxui::ScreenInteractive::Fullscreen();
 
-    // Shared state so the thin wrapper can always delegate to the live scene.
     struct SceneHolder {
-        ftxui::Component active;
-        UIScene          pending    = UIScene::Exit;
-        bool             hasPending = false;
+        ftxui::Component        active;
+        std::optional<UIScene>  pending;
     };
     auto holder = std::make_shared<SceneHolder>();
 
-    // onRoute is invoked by scenes from within OnEvent (on the FTXUI event
-    // thread).  We defer the actual swap via PostEvent so the current component
-    // is never destroyed while it is still on the call stack.
     std::function<void(UIScene)> onRoute = [holder, &screen](UIScene next) {
         if (next == UIScene::Exit) {
             screen.ExitLoopClosure()();
             return;
         }
-        if (!holder->hasPending) {
-            holder->pending    = next;
-            holder->hasPending = true;
+        if (!holder->pending) {
+            holder->pending = next;
             screen.PostEvent(ftxui::Event::Custom);
         }
     };
 
-    // Build the initial scene.
     prepareCommon();
     holder->active = buildSceneComponent(UIScene::StartMenu, screen, onRoute);
 
-    // A thin persistent wrapper — always delegates render/events to the
-    // currently live scene without ever restarting the Loop.
-    auto root = ftxui::Renderer([holder] {
-        return holder->active ? holder->active->Render()
-                              : ftxui::text("") | ftxui::flex;
-    });
-
-    auto app = ftxui::CatchEvent(root, [holder, &screen, &onRoute](ftxui::Event e) {
-        // On the first Custom event after a route change, perform the deferred
-        // scene swap.  This runs on the FTXUI event thread, safely after the
-        // previous component's OnEvent has already returned.
-        if (holder->hasPending && e == ftxui::Event::Custom) {
-            holder->hasPending = false;
-            const UIScene next = holder->pending;
-            prepareCommon();
-            if (sceneNeedsDataDirs(next)) {
-                prepareDataDirs();
+    auto app = ftxui::CatchEvent(
+        ftxui::Renderer([holder] {
+            return holder->active ? holder->active->Render()
+                                  : ftxui::text("") | ftxui::flex;
+        }),
+        [holder, &screen, &onRoute](ftxui::Event e) {
+            if (holder->pending && e == ftxui::Event::Custom) {
+                const UIScene next = *std::exchange(holder->pending, std::nullopt);
+                prepareCommon();
+                if (sceneNeedsDataDirs(next)) {
+                    prepareDataDirs();
+                }
+                holder->active = buildSceneComponent(next, screen, onRoute);
+                return true;
             }
-            holder->active = buildSceneComponent(next, screen, onRoute);
-            return true;
-        }
-        return holder->active ? holder->active->OnEvent(e) : false;
-    });
+            return holder->active ? holder->active->OnEvent(e) : false;
+        });
 
     screen.Loop(app);
     return 0;
